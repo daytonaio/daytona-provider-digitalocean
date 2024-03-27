@@ -7,29 +7,29 @@ import (
 )
 
 type TargetOptions struct {
-	RequiredString string  `json:"Required String"`
-	OptionalString *string `json:"Optional String,omitempty"`
-	OptionalInt    *int    `json:"Optional Int,omitempty"`
-	FilePath       *string `json:"File Path"`
+	Region    string  `json:"Region"`               // Region slug
+	Size      string  `json:"Size"`                 // Size slug
+	Image     string  `json:"Image"`                // Image slug
+	AuthToken *string `json:"Auth Token,omitempty"` // Auth token
 }
 
 func GetTargetManifest() *provider.ProviderTargetManifest {
 	return &provider.ProviderTargetManifest{
-		"Required String": provider.ProviderTargetProperty{
+		"Region": provider.ProviderTargetProperty{
 			Type:         provider.ProviderTargetPropertyTypeString,
-			DefaultValue: "default-required-string",
+			DefaultValue: "fra1",
 		},
-		"Optional String": provider.ProviderTargetProperty{
+		"Size": provider.ProviderTargetProperty{
+			Type:         provider.ProviderTargetPropertyTypeString,
+			DefaultValue: "s-2vcpu-4gb",
+		},
+		"Image": provider.ProviderTargetProperty{
+			Type:         provider.ProviderTargetPropertyTypeString,
+			DefaultValue: "ubuntu-22-04-x64",
+		},
+		"Auth Token": provider.ProviderTargetProperty{
 			Type:        provider.ProviderTargetPropertyTypeString,
 			InputMasked: true,
-		},
-		"Optional Int": provider.ProviderTargetProperty{
-			Type: provider.ProviderTargetPropertyTypeInt,
-		},
-		"File Path": provider.ProviderTargetProperty{
-			Type:              provider.ProviderTargetPropertyTypeFilePath,
-			DefaultValue:      "~/.ssh",
-			DisabledPredicate: "^default-target$",
 		},
 	}
 }
