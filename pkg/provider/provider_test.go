@@ -7,13 +7,16 @@ import (
 	daytona_provider "github.com/daytonaio/daytona/pkg/provider"
 	"github.com/daytonaio/daytona/pkg/types"
 
-	"daytonaio/daytona-digitalocean-provider/pkg/provider"
-	provider_types "daytonaio/daytona-digitalocean-provider/pkg/types"
+	"github.com/daytonaio/daytona-provider-digitalocean/pkg/provider"
+	provider_types "github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
 )
 
 var sampleProvider = &provider.DigitalOceanProvider{}
 var targetOptions = &provider_types.TargetOptions{
-	RequiredString: "default-required-string",
+	Region:    "nyc3",
+	Size:      "s-1vcpu-1gb",
+	Image:     "ubuntu-20-04-x64",
+	AuthToken: &[]string{"dop_v1_1a7e99c97afad1138d9a650544da6d41ef6b915d273b9dea382ec5fc127aecd2"}[0],
 }
 var optionsString string
 
@@ -26,6 +29,16 @@ var project1 = &types.Project{
 		Branch: "main",
 	},
 	WorkspaceId: "123",
+
+	EnvVars: map[string]string{
+		"DAYTONA_WS_ID":                     "123",
+		"DAYTONA_WS_PROJECT_NAME":           "test",
+		"DAYTONA_WS_PROJECT_REPOSITORY_URL": "https://github.com/daytonaio/daytona",
+		"DAYTONA_SERVER_API_KEY":            "api-key-test",
+		"DAYTONA_SERVER_VERSION":            "latest",
+		"DAYTONA_SERVER_URL":                "http://localhost:3001",
+		"DAYTONA_SERVER_API_URL":            "http://localhost:3000",
+	},
 }
 
 var workspace = &types.Workspace{

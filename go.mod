@@ -1,4 +1,4 @@
-module daytonaio/daytona-digitalocean-provider
+module github.com/daytonaio/daytona-provider-digitalocean
 
 go 1.22.1
 
@@ -10,6 +10,16 @@ require (
 )
 
 require (
+	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.4 // indirect
+	golang.org/x/oauth2 v0.16.0 // indirect
+	golang.org/x/time v0.5.0 // indirect
+	google.golang.org/appengine v1.6.8 // indirect
+)
+
+require (
+	github.com/digitalocean/godo v1.110.0
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
