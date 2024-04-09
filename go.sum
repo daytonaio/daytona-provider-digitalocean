@@ -4,8 +4,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/daytonaio/daytona v0.8.2 h1:KeKZT+NG8DpwMQBxU26lS6tcbQOg170CMukzgGhJhwE=
-github.com/daytonaio/daytona v0.8.2/go.mod h1:e1ViMiw/cyVOdMQCW768/eeXyUPopP5pAvJnQEBL8oU=
+github.com/daytonaio/daytona v0.10.0 h1:+EiVhUUwaebB7Wbjih+FMkzhP/1wRy9QTLmgnmAEuFs=
+github.com/daytonaio/daytona v0.10.0/go.mod h1:U5+13CgMt24uQ8DzwoFXKSnpmi7vO78uRd32SlcyBxg=
 github.com/digitalocean/godo v1.110.0 h1:EY+rewWCYrUNOPbk9wI2Ytf0TBSRTJcZ6BINCb5dfmQ=
 github.com/digitalocean/godo v1.110.0/go.mod h1:R6EmmWI8CT1+fCtjWY9UCB+L5uufuZH13wk3YhxycCs=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
