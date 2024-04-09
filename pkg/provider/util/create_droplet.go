@@ -2,7 +2,7 @@ package util
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"time"
 
 	provider_types "github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
@@ -36,6 +36,20 @@ func CreateDroplet(client *godo.Client, project *types.Project, targetOptions *p
 	userData += "su daytona\n"
 	userData += util.GetProjectStartScript(serverDownloadUrl, project.ApiKey)
 
+	// Get the droplet name
+	dropletName := GetDropletName(project)
+
+	// Check if a droplet with the same name already exists
+	droplets, _, err := client.Droplets.List(context.Background(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error listing droplets: %v", err)
+	}
+	for _, d := range droplets {
+		if d.Name == dropletName {
+			return nil, fmt.Errorf("a droplet with the name %s already exists", dropletName)
+		}
+	}
+
 	// generate instance object
 	instance := &godo.DropletCreateRequest{
 		Name:   GetDropletName(project),
@@ -51,14 +65,14 @@ func CreateDroplet(client *godo.Client, project *types.Project, targetOptions *p
 	// Create the droplet
 	droplet, _, err := client.Droplets.Create(context.Background(), instance)
 	if err != nil {
-		log.Fatalf("Error creating droplet: %v", err)
+		return nil, fmt.Errorf("error creating droplet: %v", err)
 	}
 
 	// Poll the droplet's status until it becomes active
 	for {
 		droplet, _, err = client.Droplets.Get(context.Background(), droplet.ID)
 		if err != nil {
-			log.Fatalf("Error getting droplet: %v", err)
+			return nil, fmt.Errorf("error creating droplet: %v", err)
 		}
 
 		if droplet.Status == "active" {
