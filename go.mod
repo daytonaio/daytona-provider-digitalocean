@@ -3,17 +3,17 @@ module github.com/daytonaio/daytona-provider-digitalocean
 go 1.22.1
 
 require (
-	github.com/daytonaio/daytona v0.8.2
+	github.com/daytonaio/daytona v0.10.0
 	github.com/hashicorp/go-hclog v1.6.2
 	github.com/hashicorp/go-plugin v1.6.0
 	github.com/sirupsen/logrus v1.9.3
+	golang.org/x/oauth2 v0.16.0
 )
 
 require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.4 // indirect
-	golang.org/x/oauth2 v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 )
