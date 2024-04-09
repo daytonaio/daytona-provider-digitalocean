@@ -6,7 +6,6 @@ import (
 	"time"
 
 	provider_types "github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
-	"github.com/daytonaio/daytona/pkg/provider/util"
 	"github.com/daytonaio/daytona/pkg/types"
 	"github.com/digitalocean/godo"
 )
@@ -16,9 +15,9 @@ func CreateDroplet(client *godo.Client, project *types.Project, targetOptions *p
 	userData := `#!/bin/bash
     # Create Daytona user
     useradd daytona -m -s /bin/bash
-	if grep -q sudo /etc/groups; then
+	if grep -q sudo /etc/group; then
 		usermod -aG sudo daytona
-	elif grep -q wheel /etc/groups; then
+	elif grep -q wheel /etc/group; then
 		usermod -aG wheel daytona
 	fi
 	echo "daytona ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/91-daytona
@@ -29,12 +28,35 @@ func CreateDroplet(client *godo.Client, project *types.Project, targetOptions *p
 		userData += "export " + k + "=" + v + "\n"
 	}
 
-	userData += "echo 'export DAYTONA_WS_DIR=/home/daytona/project' >> /etc/profile.d/daytona_env_vars.sh\n"
-	userData += "export DAYTONA_WS_DIR=/home/daytona/project\n"
+	userData += "echo 'export DAYTONA_WS_DIR=/home/daytona/" + project.Name + "' >> /etc/profile.d/daytona_env_vars.sh\n"
+	userData += "export DAYTONA_WS_DIR=/home/daytona/" + project.Name + "\n"
 
 	// TODO: "DAYTONA_WS_DIR=" + path.Join("/workspaces", project.Name),
-	userData += "su daytona\n"
-	userData += util.GetProjectStartScript(serverDownloadUrl, project.ApiKey)
+	// userData += "su daytona\n"
+	userData += fmt.Sprintf(`curl -sfL -H "Authorization: Bearer %s" %s | bash`, project.ApiKey, serverDownloadUrl)
+	userData += `
+	echo '[Unit]
+Description=Daytona Agent Service
+After=network.target
+
+[Service]
+User=daytona
+ExecStart=/usr/local/bin/daytona agent
+Restart=always
+`
+
+	for k, v := range project.EnvVars {
+		userData += fmt.Sprintf("Environment='%s=%s'\n", k, v)
+	}
+	userData += "Environment='DAYTONA_WS_DIR=/home/daytona/" + project.Name + "'\n"
+
+	userData += `
+[Install]
+WantedBy=multi-user.target' > /etc/systemd/system/daytona-agent.service
+
+	systemctl enable daytona-agent.service
+	systemctl start daytona-agent.service
+	`
 
 	// Get the droplet name
 	dropletName := GetDropletName(project)
