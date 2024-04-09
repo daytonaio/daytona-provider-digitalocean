@@ -30,6 +30,7 @@ func GetTargetManifest() *provider.ProviderTargetManifest {
 		"Auth Token": provider.ProviderTargetProperty{
 			Type:        provider.ProviderTargetPropertyTypeString,
 			InputMasked: true,
+			Description: "If empty, token will be fetched from the DIGITALOCEAN_ACCESS_TOKEN environment variable.",
 		},
 	}
 }
