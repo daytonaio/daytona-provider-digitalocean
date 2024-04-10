@@ -12,19 +12,16 @@ func GetDropletName(project *types.Project) string {
 	return fmt.Sprintf("%s-%s", project.Name, project.WorkspaceId)
 }
 
-func GetDropletIDByName(client *godo.Client, dropletName string) (int, error) {
-	// Get all droplets
-	droplets, _, err := client.Droplets.List(context.Background(), nil)
+func GetDroplet(client *godo.Client, dropletName string) (*godo.Droplet, error) {
+	droplets, _, err := client.Droplets.ListByName(context.Background(), dropletName, nil)
 	if err != nil {
-		return 0, fmt.Errorf("error getting droplets: %v", err)
+		return nil, fmt.Errorf("error getting droplet: %v", err)
 	}
 
-	// Find the droplet with the given name
-	for _, droplet := range droplets {
-		if droplet.Name == dropletName {
-			return droplet.ID, nil
-		}
+	if len(droplets) > 0 {
+		return &droplets[0], nil
 	}
 
-	return 0, fmt.Errorf("no droplet found with name %s", dropletName)
+	return nil, fmt.Errorf("no droplet found with name %s", dropletName)
+
 }
