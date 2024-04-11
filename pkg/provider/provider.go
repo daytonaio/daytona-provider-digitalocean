@@ -161,10 +161,86 @@ func (p DigitalOceanProvider) CreateProject(projectReq *provider.ProjectRequest)
 }
 
 func (p DigitalOceanProvider) StartProject(projectReq *provider.ProjectRequest) (*types.Empty, error) {
+	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
+	if p.LogsDir != nil {
+		wsLogWriter := logger.GetWorkspaceLogger(*p.LogsDir, projectReq.Project.WorkspaceId)
+		projectLogWriter := logger.GetProjectLogger(*p.LogsDir, projectReq.Project.WorkspaceId, projectReq.Project.Name)
+		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, wsLogWriter, projectLogWriter)
+		defer wsLogWriter.Close()
+		defer projectLogWriter.Close()
+	}
+
+	// Parse the JSON string into a TargetOptions struct
+	targetOptions, err := provider_types.ParseTargetOptions(projectReq.TargetOptions)
+	if err != nil {
+		logWriter.Write([]byte("Error parsing target options: " + err.Error() + "\n"))
+		return nil, err
+	}
+
+	client, err := p.getClient(targetOptions)
+	if err != nil {
+		logWriter.Write([]byte("Failed to get client: " + err.Error() + "\n"))
+		return nil, err
+	}
+
+	// Construct the droplet name and get the droplet ID
+	droplet, err := util.GetDroplet(client, util.GetDropletName(projectReq.Project))
+	if err != nil {
+		logWriter.Write([]byte("Failed to get droplet ID: " + err.Error() + "\n"))
+		return nil, err
+	}
+
+	// Power on DigitalOcean droplet
+	err = util.PowerOnDroplet(client, droplet.ID)
+	if err != nil {
+		logWriter.Write([]byte("Failed to delete droplet: " + err.Error() + "\n"))
+		return nil, err
+	}
+
+	logWriter.Write([]byte("Droplet powered on.\n"))
+
 	return new(types.Empty), nil
 }
 
 func (p DigitalOceanProvider) StopProject(projectReq *provider.ProjectRequest) (*types.Empty, error) {
+	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
+	if p.LogsDir != nil {
+		wsLogWriter := logger.GetWorkspaceLogger(*p.LogsDir, projectReq.Project.WorkspaceId)
+		projectLogWriter := logger.GetProjectLogger(*p.LogsDir, projectReq.Project.WorkspaceId, projectReq.Project.Name)
+		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, wsLogWriter, projectLogWriter)
+		defer wsLogWriter.Close()
+		defer projectLogWriter.Close()
+	}
+
+	// Parse the JSON string into a TargetOptions struct
+	targetOptions, err := provider_types.ParseTargetOptions(projectReq.TargetOptions)
+	if err != nil {
+		logWriter.Write([]byte("Error parsing target options: " + err.Error() + "\n"))
+		return nil, err
+	}
+
+	client, err := p.getClient(targetOptions)
+	if err != nil {
+		logWriter.Write([]byte("Failed to get client: " + err.Error() + "\n"))
+		return nil, err
+	}
+
+	// Construct the droplet name and get the droplet ID
+	droplet, err := util.GetDroplet(client, util.GetDropletName(projectReq.Project))
+	if err != nil {
+		logWriter.Write([]byte("Failed to get droplet ID: " + err.Error() + "\n"))
+		return nil, err
+	}
+
+	// Power off DigitalOcean droplet
+	err = util.PowerOffDroplet(client, droplet.ID)
+	if err != nil {
+		logWriter.Write([]byte("Failed to delete droplet: " + err.Error() + "\n"))
+		return nil, err
+	}
+
+	logWriter.Write([]byte("Droplet powered off.\n"))
+
 	return new(types.Empty), nil
 }
 

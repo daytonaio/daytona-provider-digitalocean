@@ -110,6 +110,32 @@ func TestCreateProject(t *testing.T) {
 	}
 }
 
+func TestStartProject(t *testing.T) {
+	projectReq := &daytona_provider.ProjectRequest{
+		TargetOptions: optionsString,
+		Project:       project1,
+	}
+
+	// Call StartProject
+	_, err := sampleProvider.StartProject(projectReq)
+	if err != nil {
+		t.Errorf("Error starting a project: %s", err)
+	}
+}
+
+func TestStopProject(t *testing.T) {
+	projectReq := &daytona_provider.ProjectRequest{
+		TargetOptions: optionsString,
+		Project:       project1,
+	}
+
+	// Call StartProject
+	_, err := sampleProvider.StopProject(projectReq)
+	if err != nil {
+		t.Errorf("Error stopping a project: %s", err)
+	}
+}
+
 func TestDestroyProject(t *testing.T) {
 	projectReq := &daytona_provider.ProjectRequest{
 		TargetOptions: optionsString,
