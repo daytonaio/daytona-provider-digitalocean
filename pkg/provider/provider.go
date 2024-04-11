@@ -181,7 +181,8 @@ func (p DigitalOceanProvider) DestroyProject(projectReq *provider.ProjectRequest
 	// Parse the JSON string into a TargetOptions struct
 	targetOptions, err := provider_types.ParseTargetOptions(projectReq.TargetOptions)
 	if err != nil {
-		log.Fatalf("Error parsing target options: %v", err)
+		logWriter.Write([]byte("Error parsing target options: " + err.Error() + "\n"))
+		return nil, err
 	}
 
 	client, err := p.getClient(targetOptions)
@@ -191,17 +192,14 @@ func (p DigitalOceanProvider) DestroyProject(projectReq *provider.ProjectRequest
 	}
 
 	// Construct the droplet name and get the droplet ID
-	dropletName := util.GetDropletName(projectReq.Project)
-	dropletID, err := util.GetDropletIDByName(client, util.GetDropletName(projectReq.Project))
+	droplet, err := util.GetDroplet(client, util.GetDropletName(projectReq.Project))
 	if err != nil {
 		logWriter.Write([]byte("Failed to get droplet ID: " + err.Error() + "\n"))
 		return nil, err
 	}
 
-	logWriter.Write([]byte(fmt.Sprintf("Droplet to be deleted: Name - %s, ID - %d\n", dropletName, dropletID)))
-
 	// Delete DigitalOcean droplet
-	err = util.DeleteDroplet(client, dropletID)
+	err = util.DeleteDroplet(client, droplet.ID)
 	if err != nil {
 		logWriter.Write([]byte("Failed to delete droplet: " + err.Error() + "\n"))
 		return nil, err
@@ -213,6 +211,15 @@ func (p DigitalOceanProvider) DestroyProject(projectReq *provider.ProjectRequest
 }
 
 func (p DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectRequest) (*types.ProjectInfo, error) {
+	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
+	if p.LogsDir != nil {
+		wsLogWriter := logger.GetWorkspaceLogger(*p.LogsDir, projectReq.Project.WorkspaceId)
+		projectLogWriter := logger.GetProjectLogger(*p.LogsDir, projectReq.Project.WorkspaceId, projectReq.Project.Name)
+		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, wsLogWriter, projectLogWriter)
+		defer wsLogWriter.Close()
+		defer projectLogWriter.Close()
+	}
+
 	providerMetadata := provider_types.ProjectMetadata{
 		Property: projectReq.Project.Name,
 	}
@@ -222,12 +229,32 @@ func (p DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectRequest
 		return nil, err
 	}
 
+	// Parse the JSON string into a TargetOptions struct
+	targetOptions, err := provider_types.ParseTargetOptions(projectReq.TargetOptions)
+	if err != nil {
+		logWriter.Write([]byte("Error parsing target options: " + err.Error() + "\n"))
+		return nil, err
+	}
+
+	client, err := p.getClient(targetOptions)
+	if err != nil {
+		logWriter.Write([]byte("Failed to get client: " + err.Error() + "\n"))
+		return nil, err
+	}
+
+	droplet, err := util.GetDroplet(client, util.GetDropletName(projectReq.Project))
+	if err != nil {
+		return nil, fmt.Errorf("error getting droplet status: %v", err)
+	}
+
+	isRunning := droplet.Status == "active"
+
 	projectInfo := &types.ProjectInfo{
 		Name:             projectReq.Project.Name,
-		IsRunning:        true,
-		Created:          "Created at ...",
-		Started:          "Started at ...",
-		Finished:         "Finished at ...",
+		IsRunning:        isRunning,
+		Created:          droplet.Created,
+		Started:          "-",
+		Finished:         "-",
 		ProviderMetadata: string(metadataString),
 	}
 
