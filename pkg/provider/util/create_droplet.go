@@ -8,20 +8,68 @@ import (
 	provider_types "github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
 	"github.com/daytonaio/daytona/pkg/types"
 	"github.com/digitalocean/godo"
+	"github.com/pkg/errors"
 )
 
 func CreateDroplet(client *godo.Client, project *types.Project, targetOptions *provider_types.TargetOptions, serverDownloadUrl string) (*godo.Droplet, error) {
+	fmt.Println("DiskSize:", targetOptions.DiskSize)
+
+	// create volume
+	volume, err := GetVolumeByName(client, project.Name)
+	if err != nil {
+		return nil, err
+	} else if volume == nil {
+		volume, _, err = client.Storage.CreateVolume(context.Background(), &godo.VolumeCreateRequest{
+			Name:            GetDropletName(project),
+			Region:          targetOptions.Region,
+			SizeGigaBytes:   int64(targetOptions.DiskSize),
+			FilesystemType:  "ext4",
+			FilesystemLabel: "Daytona Data",
+			Tags:            []string{"daytona"},
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "create volume")
+		}
+	}
+
 	// retrieve user data
 	userData := `#!/bin/bash
-    # Create Daytona user
-    useradd daytona -m -s /bin/bash
-	if grep -q sudo /etc/group; then
-		usermod -aG sudo daytona
-	elif grep -q wheel /etc/group; then
-		usermod -aG wheel daytona
-	fi
-	echo "daytona ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/91-daytona
-	`
+
+umount /mnt/` + GetDropletName(project) + `
+
+# Mount volume to home
+mkdir -p /home/daytona
+mount -o discard,defaults,noatime /dev/disk/by-id/scsi-0DO_Volume_` + GetDropletName(project) + ` /home/daytona
+
+echo '/dev/disk/by-id/scsi-0DO_Volume_` + GetDropletName(project) + ` /home/daytona ext4 discard,defaults,noatime 0 0' | sudo tee -a /etc/fstab
+
+curl -fsSL https://get.docker.com | bash
+
+# Move docker data dir
+service docker stop
+cat > /etc/docker/daemon.json << EOF
+{
+  "data-root": "/home/daytona/.docker-daemon",
+  "live-restore": true
+}
+EOF
+# Make sure we only copy if volumes isn't initialized
+if [ ! -d "/home/daytona/.docker-daemon" ]; then
+  mkdir -p /home/daytona/.docker-daemon
+  rsync -aP /var/lib/docker/ /home/daytona/.docker-daemon
+fi
+service docker start
+
+# Create Daytona user
+useradd daytona -d /home/daytona -s /bin/bash
+if grep -q sudo /etc/group; then
+	usermod -aG sudo daytona
+elif grep -q wheel /etc/group; then
+	usermod -aG wheel daytona
+fi
+echo "daytona ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/91-daytona
+chown daytona:daytona /home/daytona
+`
 
 	for k, v := range project.EnvVars {
 		userData += "echo 'export " + k + "=" + v + "' >> /etc/profile.d/daytona_env_vars.sh\n"
@@ -54,9 +102,9 @@ Restart=always
 [Install]
 WantedBy=multi-user.target' > /etc/systemd/system/daytona-agent.service
 
-	systemctl enable daytona-agent.service
-	systemctl start daytona-agent.service
-	`
+systemctl enable daytona-agent.service
+systemctl start daytona-agent.service
+`
 
 	// Get the droplet name
 	dropletName := GetDropletName(project)
@@ -82,6 +130,7 @@ WantedBy=multi-user.target' > /etc/systemd/system/daytona-agent.service
 		},
 		UserData: userData,
 		Tags:     []string{"daytona"},
+		Volumes:  []godo.DropletCreateVolume{{ID: volume.ID}},
 	}
 
 	// Create the droplet
