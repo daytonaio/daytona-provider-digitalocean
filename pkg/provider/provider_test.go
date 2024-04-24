@@ -16,6 +16,7 @@ var targetOptions = &provider_types.TargetOptions{
 	Region:    "nyc3",
 	Size:      "s-1vcpu-1gb",
 	Image:     "ubuntu-20-04-x64",
+	DiskSize:  20,
 	AuthToken: &[]string{"dop_v1_1a7e99c97afad1138d9a650544da6d41ef6b915d273b9dea382ec5fc127aecd2"}[0],
 }
 var optionsString string
