@@ -17,6 +17,7 @@ var targetOptions = &provider_types.TargetOptions{
 	Size:      "s-1vcpu-1gb",
 	Image:     "ubuntu-20-04-x64",
 	AuthToken: &[]string{"DO_AUTH_TOKEN"}[0],
+	DiskSize:  20,
 }
 var optionsString string
 

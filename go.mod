@@ -6,6 +6,7 @@ require (
 	github.com/daytonaio/daytona v0.10.0
 	github.com/hashicorp/go-hclog v1.6.2
 	github.com/hashicorp/go-plugin v1.6.0
+	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/oauth2 v0.16.0
 )

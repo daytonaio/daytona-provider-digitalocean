@@ -25,3 +25,16 @@ func GetDroplet(client *godo.Client, dropletName string) (*godo.Droplet, error) 
 	return nil, fmt.Errorf("no droplet found with name %s", dropletName)
 
 }
+
+func GetVolumeByName(client *godo.Client, name string) (*godo.Volume, error) {
+	volumes, _, err := client.Storage.ListVolumes(context.Background(), &godo.ListVolumeParams{Name: name})
+	if err != nil {
+		return nil, err
+	} else if len(volumes) > 1 {
+		return nil, fmt.Errorf("multiple volumes with name %s found", name)
+	} else if len(volumes) == 0 {
+		return nil, nil
+	}
+
+	return &volumes[0], nil
+}

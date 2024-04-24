@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
+	"time"
 
 	internal "github.com/daytonaio/daytona-provider-digitalocean/internal"
 	log_writers "github.com/daytonaio/daytona-provider-digitalocean/internal/log"
@@ -202,6 +204,28 @@ func (p DigitalOceanProvider) DestroyProject(projectReq *provider.ProjectRequest
 	err = util.DeleteDroplet(client, droplet.ID)
 	if err != nil {
 		logWriter.Write([]byte("Failed to delete droplet: " + err.Error() + "\n"))
+		return nil, err
+	}
+
+	// Wait for the droplet to be deleted
+	for {
+		_, _, err := client.Droplets.Get(context.Background(), droplet.ID)
+		if err != nil {
+			if strings.Contains(err.Error(), "404") {
+				break
+			} else {
+				logWriter.Write([]byte("Failed to get droplet: " + err.Error() + "\n"))
+				return nil, err
+			}
+		}
+
+		time.Sleep(5 * time.Second)
+	}
+
+	// Delete DigitalOcean droplet
+	err = util.DeleteVolume(client, util.GetDropletName(projectReq.Project))
+	if err != nil {
+		logWriter.Write([]byte("Failed to delete volume: " + err.Error() + "\n"))
 		return nil, err
 	}
 
