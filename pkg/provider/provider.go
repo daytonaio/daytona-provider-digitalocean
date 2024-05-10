@@ -13,12 +13,13 @@ import (
 	internal "github.com/daytonaio/daytona-provider-digitalocean/internal"
 	log_writers "github.com/daytonaio/daytona-provider-digitalocean/internal/log"
 	"github.com/daytonaio/daytona-provider-digitalocean/pkg/provider/util"
-	provider_types "github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
+	"github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
+	provider_util "github.com/daytonaio/daytona/pkg/provider/util"
 	"golang.org/x/oauth2"
 
 	"github.com/daytonaio/daytona/pkg/logger"
 	"github.com/daytonaio/daytona/pkg/provider"
-	"github.com/daytonaio/daytona/pkg/types"
+	"github.com/daytonaio/daytona/pkg/workspace"
 	"github.com/digitalocean/godo"
 
 	log "github.com/sirupsen/logrus"
@@ -34,7 +35,7 @@ type DigitalOceanProvider struct {
 	OwnProperty       string
 }
 
-func (p *DigitalOceanProvider) Initialize(req provider.InitializeProviderRequest) (*types.Empty, error) {
+func (p *DigitalOceanProvider) Initialize(req provider.InitializeProviderRequest) (*provider_util.Empty, error) {
 	p.OwnProperty = "my-own-property"
 
 	p.BasePath = &req.BasePath
@@ -44,7 +45,7 @@ func (p *DigitalOceanProvider) Initialize(req provider.InitializeProviderRequest
 	p.ServerApiUrl = &req.ServerApiUrl
 	p.LogsDir = &req.LogsDir
 
-	return new(types.Empty), nil
+	return new(provider_util.Empty), nil
 }
 
 func (p DigitalOceanProvider) GetInfo() (provider.ProviderInfo, error) {
@@ -55,7 +56,7 @@ func (p DigitalOceanProvider) GetInfo() (provider.ProviderInfo, error) {
 }
 
 func (p DigitalOceanProvider) GetTargetManifest() (*provider.ProviderTargetManifest, error) {
-	return provider_types.GetTargetManifest(), nil
+	return types.GetTargetManifest(), nil
 }
 
 func (p DigitalOceanProvider) GetDefaultTargets() (*[]provider.ProviderTarget, error) {
@@ -74,7 +75,7 @@ func (p DigitalOceanProvider) GetDefaultTargets() (*[]provider.ProviderTarget, e
 	return &defaultTargets, nil
 }
 
-func (p DigitalOceanProvider) CreateWorkspace(workspaceReq *provider.WorkspaceRequest) (*types.Empty, error) {
+func (p DigitalOceanProvider) CreateWorkspace(workspaceReq *provider.WorkspaceRequest) (*provider_util.Empty, error) {
 	// logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	// if p.LogsDir != nil {
 	// 	wsLogWriter := logger.GetWorkspaceLogger(*p.LogsDir, workspaceReq.Workspace.Id)
@@ -86,33 +87,33 @@ func (p DigitalOceanProvider) CreateWorkspace(workspaceReq *provider.WorkspaceRe
 
 	// logWriter.Write([]byte("Workspace created\n"))
 
-	return new(types.Empty), nil
+	return new(provider_util.Empty), nil
 }
 
-func (p DigitalOceanProvider) StartWorkspace(workspaceReq *provider.WorkspaceRequest) (*types.Empty, error) {
-	return new(types.Empty), nil
+func (p DigitalOceanProvider) StartWorkspace(workspaceReq *provider.WorkspaceRequest) (*provider_util.Empty, error) {
+	return new(provider_util.Empty), nil
 }
 
-func (p DigitalOceanProvider) StopWorkspace(workspaceReq *provider.WorkspaceRequest) (*types.Empty, error) {
-	return new(types.Empty), nil
+func (p DigitalOceanProvider) StopWorkspace(workspaceReq *provider.WorkspaceRequest) (*provider_util.Empty, error) {
+	return new(provider_util.Empty), nil
 }
 
-func (p DigitalOceanProvider) DestroyWorkspace(workspaceReq *provider.WorkspaceRequest) (*types.Empty, error) {
-	return new(types.Empty), nil
+func (p DigitalOceanProvider) DestroyWorkspace(workspaceReq *provider.WorkspaceRequest) (*provider_util.Empty, error) {
+	return new(provider_util.Empty), nil
 }
 
-func (p DigitalOceanProvider) GetWorkspaceInfo(workspaceReq *provider.WorkspaceRequest) (*types.WorkspaceInfo, error) {
+func (p DigitalOceanProvider) GetWorkspaceInfo(workspaceReq *provider.WorkspaceRequest) (*workspace.WorkspaceInfo, error) {
 	providerMetadata, err := p.getWorkspaceMetadata(workspaceReq)
 	if err != nil {
 		return nil, err
 	}
 
-	workspaceInfo := &types.WorkspaceInfo{
+	workspaceInfo := &workspace.WorkspaceInfo{
 		Name:             workspaceReq.Workspace.Name,
 		ProviderMetadata: providerMetadata,
 	}
 
-	projectInfos := []*types.ProjectInfo{}
+	projectInfos := []*workspace.ProjectInfo{}
 	for _, project := range workspaceReq.Workspace.Projects {
 		projectInfo, err := p.GetProjectInfo(&provider.ProjectRequest{
 			TargetOptions: workspaceReq.TargetOptions,
@@ -128,18 +129,17 @@ func (p DigitalOceanProvider) GetWorkspaceInfo(workspaceReq *provider.WorkspaceR
 	return workspaceInfo, nil
 }
 
-func (p DigitalOceanProvider) CreateProject(projectReq *provider.ProjectRequest) (*types.Empty, error) {
+func (p DigitalOceanProvider) CreateProject(projectReq *provider.ProjectRequest) (*provider_util.Empty, error) {
 	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	if p.LogsDir != nil {
-		wsLogWriter := logger.GetWorkspaceLogger(*p.LogsDir, projectReq.Project.WorkspaceId)
-		projectLogWriter := logger.GetProjectLogger(*p.LogsDir, projectReq.Project.WorkspaceId, projectReq.Project.Name)
-		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, wsLogWriter, projectLogWriter)
-		defer wsLogWriter.Close()
+		loggerFactory := logger.NewLoggerFactory(*p.LogsDir)
+		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name)
+		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
 		defer projectLogWriter.Close()
 	}
 
 	// Parse the JSON string into a TargetOptions struct
-	targetOptions, err := provider_types.ParseTargetOptions(projectReq.TargetOptions)
+	targetOptions, err := types.ParseTargetOptions(projectReq.TargetOptions)
 	if err != nil {
 		log.Fatalf("Error parsing target options: %v", err)
 	}
@@ -159,21 +159,20 @@ func (p DigitalOceanProvider) CreateProject(projectReq *provider.ProjectRequest)
 
 	logWriter.Write([]byte("Project created\n"))
 
-	return new(types.Empty), nil
+	return new(provider_util.Empty), nil
 }
 
-func (p DigitalOceanProvider) StartProject(projectReq *provider.ProjectRequest) (*types.Empty, error) {
+func (p DigitalOceanProvider) StartProject(projectReq *provider.ProjectRequest) (*provider_util.Empty, error) {
 	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	if p.LogsDir != nil {
-		wsLogWriter := logger.GetWorkspaceLogger(*p.LogsDir, projectReq.Project.WorkspaceId)
-		projectLogWriter := logger.GetProjectLogger(*p.LogsDir, projectReq.Project.WorkspaceId, projectReq.Project.Name)
-		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, wsLogWriter, projectLogWriter)
-		defer wsLogWriter.Close()
+		loggerFactory := logger.NewLoggerFactory(*p.LogsDir)
+		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name)
+		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
 		defer projectLogWriter.Close()
 	}
 
 	// Parse the JSON string into a TargetOptions struct
-	targetOptions, err := provider_types.ParseTargetOptions(projectReq.TargetOptions)
+	targetOptions, err := types.ParseTargetOptions(projectReq.TargetOptions)
 	if err != nil {
 		logWriter.Write([]byte("Error parsing target options: " + err.Error() + "\n"))
 		return nil, err
@@ -201,21 +200,20 @@ func (p DigitalOceanProvider) StartProject(projectReq *provider.ProjectRequest) 
 
 	logWriter.Write([]byte("Droplet powered on.\n"))
 
-	return new(types.Empty), nil
+	return new(provider_util.Empty), nil
 }
 
-func (p DigitalOceanProvider) StopProject(projectReq *provider.ProjectRequest) (*types.Empty, error) {
+func (p DigitalOceanProvider) StopProject(projectReq *provider.ProjectRequest) (*provider_util.Empty, error) {
 	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	if p.LogsDir != nil {
-		wsLogWriter := logger.GetWorkspaceLogger(*p.LogsDir, projectReq.Project.WorkspaceId)
-		projectLogWriter := logger.GetProjectLogger(*p.LogsDir, projectReq.Project.WorkspaceId, projectReq.Project.Name)
-		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, wsLogWriter, projectLogWriter)
-		defer wsLogWriter.Close()
+		loggerFactory := logger.NewLoggerFactory(*p.LogsDir)
+		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name)
+		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
 		defer projectLogWriter.Close()
 	}
 
 	// Parse the JSON string into a TargetOptions struct
-	targetOptions, err := provider_types.ParseTargetOptions(projectReq.TargetOptions)
+	targetOptions, err := types.ParseTargetOptions(projectReq.TargetOptions)
 	if err != nil {
 		logWriter.Write([]byte("Error parsing target options: " + err.Error() + "\n"))
 		return nil, err
@@ -243,21 +241,20 @@ func (p DigitalOceanProvider) StopProject(projectReq *provider.ProjectRequest) (
 
 	logWriter.Write([]byte("Droplet powered off.\n"))
 
-	return new(types.Empty), nil
+	return new(provider_util.Empty), nil
 }
 
-func (p DigitalOceanProvider) DestroyProject(projectReq *provider.ProjectRequest) (*types.Empty, error) {
+func (p DigitalOceanProvider) DestroyProject(projectReq *provider.ProjectRequest) (*provider_util.Empty, error) {
 	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	if p.LogsDir != nil {
-		wsLogWriter := logger.GetWorkspaceLogger(*p.LogsDir, projectReq.Project.WorkspaceId)
-		projectLogWriter := logger.GetProjectLogger(*p.LogsDir, projectReq.Project.WorkspaceId, projectReq.Project.Name)
-		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, wsLogWriter, projectLogWriter)
-		defer wsLogWriter.Close()
+		loggerFactory := logger.NewLoggerFactory(*p.LogsDir)
+		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name)
+		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
 		defer projectLogWriter.Close()
 	}
 
 	// Parse the JSON string into a TargetOptions struct
-	targetOptions, err := provider_types.ParseTargetOptions(projectReq.TargetOptions)
+	targetOptions, err := types.ParseTargetOptions(projectReq.TargetOptions)
 	if err != nil {
 		logWriter.Write([]byte("Error parsing target options: " + err.Error() + "\n"))
 		return nil, err
@@ -307,20 +304,19 @@ func (p DigitalOceanProvider) DestroyProject(projectReq *provider.ProjectRequest
 
 	logWriter.Write([]byte("Project deleted\n"))
 
-	return new(types.Empty), nil
+	return new(provider_util.Empty), nil
 }
 
-func (p DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectRequest) (*types.ProjectInfo, error) {
+func (p DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectRequest) (*workspace.ProjectInfo, error) {
 	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	if p.LogsDir != nil {
-		wsLogWriter := logger.GetWorkspaceLogger(*p.LogsDir, projectReq.Project.WorkspaceId)
-		projectLogWriter := logger.GetProjectLogger(*p.LogsDir, projectReq.Project.WorkspaceId, projectReq.Project.Name)
-		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, wsLogWriter, projectLogWriter)
-		defer wsLogWriter.Close()
+		loggerFactory := logger.NewLoggerFactory(*p.LogsDir)
+		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name)
+		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
 		defer projectLogWriter.Close()
 	}
 
-	providerMetadata := provider_types.ProjectMetadata{
+	providerMetadata := types.ProjectMetadata{
 		Property: projectReq.Project.Name,
 	}
 
@@ -330,7 +326,7 @@ func (p DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectRequest
 	}
 
 	// Parse the JSON string into a TargetOptions struct
-	targetOptions, err := provider_types.ParseTargetOptions(projectReq.TargetOptions)
+	targetOptions, err := types.ParseTargetOptions(projectReq.TargetOptions)
 	if err != nil {
 		logWriter.Write([]byte("Error parsing target options: " + err.Error() + "\n"))
 		return nil, err
@@ -349,12 +345,10 @@ func (p DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectRequest
 
 	isRunning := droplet.Status == "active"
 
-	projectInfo := &types.ProjectInfo{
+	projectInfo := &workspace.ProjectInfo{
 		Name:             projectReq.Project.Name,
 		IsRunning:        isRunning,
 		Created:          droplet.Created,
-		Started:          "-",
-		Finished:         "-",
 		ProviderMetadata: string(metadataString),
 	}
 
@@ -362,7 +356,7 @@ func (p DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectRequest
 }
 
 func (p DigitalOceanProvider) getWorkspaceMetadata(workspaceReq *provider.WorkspaceRequest) (string, error) {
-	metadata := provider_types.WorkspaceMetadata{
+	metadata := types.WorkspaceMetadata{
 		Property: workspaceReq.Workspace.Id,
 	}
 
@@ -374,7 +368,7 @@ func (p DigitalOceanProvider) getWorkspaceMetadata(workspaceReq *provider.Worksp
 	return string(jsonContent), nil
 }
 
-func (p DigitalOceanProvider) getClient(targetOptions *provider_types.TargetOptions) (*godo.Client, error) {
+func (p DigitalOceanProvider) getClient(targetOptions *types.TargetOptions) (*godo.Client, error) {
 	doToken := targetOptions.AuthToken
 
 	if doToken == nil {

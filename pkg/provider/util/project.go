@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/daytonaio/daytona/pkg/types"
+	"github.com/daytonaio/daytona/pkg/workspace"
 	"github.com/digitalocean/godo"
 )
 
-func GetDropletName(project *types.Project) string {
+func GetDropletName(project *workspace.Project) string {
 	return fmt.Sprintf("%s-%s", project.Name, project.WorkspaceId)
 }
 

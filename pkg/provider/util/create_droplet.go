@@ -6,12 +6,12 @@ import (
 	"time"
 
 	provider_types "github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
-	"github.com/daytonaio/daytona/pkg/types"
+	"github.com/daytonaio/daytona/pkg/workspace"
 	"github.com/digitalocean/godo"
 	"github.com/pkg/errors"
 )
 
-func CreateDroplet(client *godo.Client, project *types.Project, targetOptions *provider_types.TargetOptions, serverDownloadUrl string) (*godo.Droplet, error) {
+func CreateDroplet(client *godo.Client, project *workspace.Project, targetOptions *provider_types.TargetOptions, serverDownloadUrl string) (*godo.Droplet, error) {
 	fmt.Println("DiskSize:", targetOptions.DiskSize)
 
 	// create volume
