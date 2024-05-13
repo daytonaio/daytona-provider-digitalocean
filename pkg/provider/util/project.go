@@ -8,8 +8,8 @@ import (
 	"github.com/digitalocean/godo"
 )
 
-func GetDropletName(project *workspace.Project) string {
-	return fmt.Sprintf("%s-%s", project.Name, project.WorkspaceId)
+func GetDropletName(workspace *workspace.Workspace) string {
+	return fmt.Sprintf("daytona-%s", workspace.Id)
 }
 
 func GetDroplet(client *godo.Client, dropletName string) (*godo.Droplet, error) {
