@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -40,14 +39,11 @@ type DigitalOceanProvider struct {
 	ServerApiUrl      *string
 	LogsDir           *string
 	NetworkKey        *string
-	OwnProperty       string
 
 	tsnetConn *tsnet.Server
 }
 
 func (p *DigitalOceanProvider) Initialize(req provider.InitializeProviderRequest) (*provider_util.Empty, error) {
-	p.OwnProperty = "my-own-property"
-
 	p.BasePath = &req.BasePath
 	p.ServerDownloadUrl = &req.ServerDownloadUrl
 	p.ServerVersion = &req.ServerVersion
@@ -71,19 +67,7 @@ func (p *DigitalOceanProvider) GetTargetManifest() (*provider.ProviderTargetMani
 }
 
 func (p *DigitalOceanProvider) GetDefaultTargets() (*[]provider.ProviderTarget, error) {
-	info, err := p.GetInfo()
-	if err != nil {
-		return nil, err
-	}
-
-	defaultTargets := []provider.ProviderTarget{
-		{
-			Name:         "default-target",
-			ProviderInfo: info,
-			Options:      "{\n\t\"Required String\": \"default-required-string\"\n}",
-		},
-	}
-	return &defaultTargets, nil
+	return &[]provider.ProviderTarget{}, nil
 }
 
 func (p *DigitalOceanProvider) CreateWorkspace(workspaceReq *provider.WorkspaceRequest) (*provider_util.Empty, error) {
@@ -421,16 +405,7 @@ func (p *DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectReques
 }
 
 func (p *DigitalOceanProvider) getWorkspaceMetadata(workspaceReq *provider.WorkspaceRequest) (string, error) {
-	metadata := types.WorkspaceMetadata{
-		Property: workspaceReq.Workspace.Id,
-	}
-
-	jsonContent, err := json.Marshal(metadata)
-	if err != nil {
-		return "", err
-	}
-
-	return string(jsonContent), nil
+	return string(""), nil
 }
 
 func (p *DigitalOceanProvider) getDoClient(targetOptions *types.TargetOptions) (*godo.Client, error) {
@@ -615,7 +590,6 @@ systemctl enable daytona-agent.service
 systemctl start daytona-agent.service
 `
 
-	// Check if a droplet with the same name already exists
 	droplets, _, err := client.Droplets.List(context.Background(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error listing droplets: %v", err)
@@ -626,7 +600,6 @@ systemctl start daytona-agent.service
 		}
 	}
 
-	// generate instance object
 	instance := &godo.DropletCreateRequest{
 		Name:   dropletName,
 		Region: targetOptions.Region,
@@ -639,7 +612,6 @@ systemctl start daytona-agent.service
 		Volumes:  []godo.DropletCreateVolume{{ID: volume.ID}},
 	}
 
-	// Create the droplet
 	droplet, _, err := client.Droplets.Create(context.Background(), instance)
 	if err != nil {
 		return nil, fmt.Errorf("error creating droplet: %v", err)

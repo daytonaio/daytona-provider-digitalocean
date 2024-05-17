@@ -10,7 +10,6 @@ import (
 
 func PowerOnDroplet(client *godo.Client, dropletID int) error {
 	_, _, err := client.DropletActions.PowerOn(context.Background(), dropletID)
-
 	if err != nil {
 		return fmt.Errorf("error powering off droplet: %v", err)
 	}

@@ -23,7 +23,6 @@ func GetDroplet(client *godo.Client, dropletName string) (*godo.Droplet, error) 
 	}
 
 	return nil, fmt.Errorf("no droplet found with name %s", dropletName)
-
 }
 
 func GetVolumeByName(client *godo.Client, name string) (*godo.Volume, error) {
