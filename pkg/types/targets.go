@@ -9,7 +9,7 @@ import (
 type TargetOptions struct {
 	Region    string  `json:"Region"`               // Region slug
 	Size      string  `json:"Size"`                 // Size slug
-	DiskSize  int     `json:"DiskSize"`             // DiskSize integer
+	DiskSize  int     `json:"Disk Size"`            // Disk Size integer
 	Image     string  `json:"Image"`                // Image slug
 	AuthToken *string `json:"Auth Token,omitempty"` // Auth token
 }
@@ -24,7 +24,7 @@ func GetTargetManifest() *provider.ProviderTargetManifest {
 			Type:         provider.ProviderTargetPropertyTypeString,
 			DefaultValue: "s-2vcpu-4gb",
 		},
-		"DiskSize": provider.ProviderTargetProperty{
+		"Disk Size": provider.ProviderTargetProperty{
 			Type:         provider.ProviderTargetPropertyTypeInt,
 			DefaultValue: "20",
 		},

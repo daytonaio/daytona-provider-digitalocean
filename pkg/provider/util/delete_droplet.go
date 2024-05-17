@@ -8,7 +8,6 @@ import (
 )
 
 func DeleteDroplet(client *godo.Client, dropletID int) error {
-	// Delete the droplet
 	_, err := client.Droplets.Delete(context.Background(), dropletID)
 	if err != nil {
 		return fmt.Errorf("error deleting droplet: %v", err)
@@ -21,7 +20,6 @@ func DeleteVolume(client *godo.Client, volumeID string) error {
 	volume, _ := GetVolumeByName(client, volumeID)
 	volumeID = volume.ID
 
-	// Delete the volume
 	_, err := client.Storage.DeleteVolume(context.Background(), volumeID)
 	if err != nil {
 		return fmt.Errorf("error deleting volume: %v", err)

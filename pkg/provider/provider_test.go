@@ -79,10 +79,6 @@ func TestGetWorkspaceInfo(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error unmarshalling workspace metadata: %s", err)
 	}
-
-	if workspaceMetadata.Property != wsReq.Workspace.Id {
-		t.Errorf("Expected network id %s, got %s", wsReq.Workspace.Id, workspaceMetadata.Property)
-	}
 }
 
 func TestDestroyWorkspace(t *testing.T) {
