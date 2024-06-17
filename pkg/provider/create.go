@@ -102,7 +102,7 @@ func (p *DigitalOceanProvider) CreateProject(projectReq *provider.ProjectRequest
 		return nil, err
 	}
 
-	err = dockerClient.CreateProject(projectReq.Project, *p.ServerDownloadUrl, projectReq.ContainerRegistry, logWriter)
+	err = dockerClient.CreateProject(projectReq.Project, *p.DaytonaDownloadUrl, projectReq.ContainerRegistry, logWriter)
 	if err != nil {
 		logWriter.Write([]byte("Failed to create project: " + err.Error() + "\n"))
 		return nil, err
@@ -127,10 +127,10 @@ func (p *DigitalOceanProvider) createDroplet(client *godo.Client, ws *workspace.
 	logWriter.Write([]byte("Creating droplet...\n"))
 
 	wsEnv := workspace.GetWorkspaceEnvVars(ws, workspace.WorkspaceEnvVarParams{
-		ApiUrl:        *p.ServerApiUrl,
+		ApiUrl:        *p.ApiUrl,
 		ApiKey:        ws.ApiKey,
 		ServerUrl:     *p.ServerUrl,
-		ServerVersion: *p.ServerVersion,
+		ServerVersion: *p.DaytonaVersion,
 	})
 
 	wsEnv["DAYTONA_AGENT_LOG_FILE_PATH"] = "/home/daytona/.daytona-agent.log"
@@ -195,7 +195,7 @@ chown daytona:daytona /home/daytona
 		userData += fmt.Sprintf("export %s=%s\n", k, v)
 	}
 
-	userData += fmt.Sprintf(`curl -sfL -H "Authorization: Bearer %s" %s | bash`, ws.ApiKey, *p.ServerDownloadUrl)
+	userData += fmt.Sprintf(`curl -sfL -H "Authorization: Bearer %s" %s | bash`, ws.ApiKey, *p.DaytonaDownloadUrl)
 	userData += `
 	echo '[Unit]
 Description=Daytona Agent Service

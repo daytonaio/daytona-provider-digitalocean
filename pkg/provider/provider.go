@@ -30,24 +30,28 @@ import (
 )
 
 type DigitalOceanProvider struct {
-	BasePath          *string
-	ServerDownloadUrl *string
-	ServerVersion     *string
-	ServerUrl         *string
-	ServerApiUrl      *string
-	LogsDir           *string
-	NetworkKey        *string
+	BasePath           *string
+	DaytonaDownloadUrl *string
+	DaytonaVersion     *string
+	ServerUrl          *string
+	ApiUrl             *string
+	LogsDir            *string
+	ApiPort            *uint32
+	ServerPort         *uint32
+	NetworkKey         *string
 
 	tsnetConn *tsnet.Server
 }
 
 func (p *DigitalOceanProvider) Initialize(req provider.InitializeProviderRequest) (*provider_util.Empty, error) {
 	p.BasePath = &req.BasePath
-	p.ServerDownloadUrl = &req.ServerDownloadUrl
-	p.ServerVersion = &req.ServerVersion
+	p.DaytonaDownloadUrl = &req.DaytonaDownloadUrl
+	p.DaytonaVersion = &req.DaytonaVersion
 	p.ServerUrl = &req.ServerUrl
-	p.ServerApiUrl = &req.ServerApiUrl
+	p.ApiUrl = &req.ApiUrl
 	p.LogsDir = &req.LogsDir
+	p.ApiPort = &req.ApiPort
+	p.ServerPort = &req.ServerPort
 	p.NetworkKey = &req.NetworkKey
 
 	return new(provider_util.Empty), nil
