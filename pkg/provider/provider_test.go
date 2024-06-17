@@ -149,12 +149,14 @@ func TestDestroyProject(t *testing.T) {
 
 func init() {
 	_, err := sampleProvider.Initialize(daytona_provider.InitializeProviderRequest{
-		BasePath:          "/tmp/workspaces",
-		ServerDownloadUrl: "https://download.daytona.io/daytona/install.sh",
-		ServerVersion:     "latest",
-		ServerUrl:         "",
-		ServerApiUrl:      "",
-		LogsDir:           "/tmp/logs",
+		BasePath:           "/tmp/workspaces",
+		DaytonaDownloadUrl: "https://download.daytona.io/daytona/get-server.sh",
+		DaytonaVersion:     "latest",
+		ServerUrl:          "",
+		ApiUrl:             "",
+		ServerPort:         0,
+		ApiPort:            0,
+		LogsDir:            "/tmp/logs",
 	})
 	if err != nil {
 		panic(err)
