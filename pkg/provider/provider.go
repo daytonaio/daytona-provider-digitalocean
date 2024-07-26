@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -15,18 +16,17 @@ import (
 	"github.com/daytonaio/daytona/pkg/agent/ssh/config"
 	"github.com/daytonaio/daytona/pkg/docker"
 	provider_util "github.com/daytonaio/daytona/pkg/provider/util"
+	"github.com/daytonaio/daytona/pkg/ssh"
 	"github.com/daytonaio/daytona/pkg/tailscale"
 	"github.com/docker/docker/client"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	"tailscale.com/tsnet"
 
-	"github.com/daytonaio/daytona/pkg/logger"
+	"github.com/daytonaio/daytona/pkg/logs"
 	"github.com/daytonaio/daytona/pkg/provider"
 	"github.com/daytonaio/daytona/pkg/workspace"
 	"github.com/digitalocean/godo"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type DigitalOceanProvider struct {
@@ -102,8 +102,8 @@ func (p *DigitalOceanProvider) GetWorkspaceInfo(workspaceReq *provider.Workspace
 func (p *DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectRequest) (*workspace.ProjectInfo, error) {
 	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	if p.LogsDir != nil {
-		loggerFactory := logger.NewLoggerFactory(*p.LogsDir)
-		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name)
+		loggerFactory := logs.NewLoggerFactory(*p.LogsDir)
+		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name, logs.LogSourceProvider)
 		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
 		defer projectLogWriter.Close()
 	}
@@ -165,39 +165,7 @@ func (p *DigitalOceanProvider) getDockerClient(workspaceId string) (docker.IDock
 		return nil, err
 	}
 
-	localSockPath := filepath.Join(*p.BasePath, workspaceId, "docker-forward.sock")
-
-	if _, err := os.Stat(filepath.Dir(localSockPath)); err != nil {
-		err := os.MkdirAll(filepath.Dir(localSockPath), 0755)
-		if err != nil {
-			return nil, err
-		}
-
-		startedChan, errChan := tailscale.ForwardRemoteUnixSock(tailscale.ForwardConfig{
-			Ctx:        context.Background(),
-			TsnetConn:  tsnetConn,
-			Hostname:   workspaceId,
-			SshPort:    config.SSH_PORT,
-			LocalSock:  localSockPath,
-			RemoteSock: "/var/run/docker.sock",
-		})
-
-		go func() {
-			err := <-errChan
-			if err != nil {
-				log.Error(err)
-				startedChan <- false
-				os.Remove(localSockPath)
-			}
-		}()
-
-		started := <-startedChan
-		if !started {
-			return nil, errors.New("failed to start SSH tunnel")
-		}
-	}
-
-	cli, err := client.NewClientWithOpts(client.WithHost(fmt.Sprintf("unix://%s", localSockPath)), client.WithAPIVersionNegotiation())
+	cli, err := client.NewClientWithOpts(client.WithDialContext(tsnetConn.Dial), client.WithHost(fmt.Sprintf("http://%s:2375", workspaceId)), client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
@@ -228,4 +196,41 @@ func (p *DigitalOceanProvider) waitForDial(workspaceId string, dialTimeout time.
 		time.Sleep(time.Second)
 	}
 	return nil
+}
+
+func (p *DigitalOceanProvider) getSshClient(workspaceId string) (*ssh.Client, error) {
+	tsnetConn, err := p.getTsnetConn()
+	if err != nil {
+		return nil, err
+	}
+
+	return tailscale.NewSshClient(tsnetConn, &ssh.SessionConfig{
+		Hostname: workspaceId,
+		Port:     config.SSH_PORT,
+	})
+}
+
+func (p *DigitalOceanProvider) getProjectDir(projectReq *provider.ProjectRequest) string {
+	return path.Join(
+		p.getWorkspaceDir(projectReq.Project.WorkspaceId),
+		fmt.Sprintf("%s-%s", projectReq.Project.WorkspaceId, projectReq.Project.Name),
+	)
+}
+
+func (p *DigitalOceanProvider) getWorkspaceDir(workspaceId string) string {
+	return fmt.Sprintf("/tmp/%s", workspaceId)
+}
+
+func (p *DigitalOceanProvider) getProjectLogWriter(workspaceId string, projectName string) (io.Writer, func()) {
+	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
+	cleanupFunc := func() {}
+
+	if p.LogsDir != nil {
+		loggerFactory := logs.NewLoggerFactory(*p.LogsDir)
+		projectLogWriter := loggerFactory.CreateProjectLogger(workspaceId, projectName, logs.LogSourceProvider)
+		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
+		cleanupFunc = func() { projectLogWriter.Close() }
+	}
+
+	return logWriter, cleanupFunc
 }

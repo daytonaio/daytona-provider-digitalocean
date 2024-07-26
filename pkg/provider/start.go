@@ -7,17 +7,18 @@ import (
 
 	log_writers "github.com/daytonaio/daytona-provider-digitalocean/internal/log"
 	"github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
+	"github.com/daytonaio/daytona/pkg/docker"
 	provider_util "github.com/daytonaio/daytona/pkg/provider/util"
 
-	"github.com/daytonaio/daytona/pkg/logger"
+	"github.com/daytonaio/daytona/pkg/logs"
 	"github.com/daytonaio/daytona/pkg/provider"
 )
 
 func (p *DigitalOceanProvider) StartWorkspace(workspaceReq *provider.WorkspaceRequest) (*provider_util.Empty, error) {
 	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	if p.LogsDir != nil {
-		loggerFactory := logger.NewLoggerFactory(*p.LogsDir)
-		wsLogWriter := loggerFactory.CreateWorkspaceLogger(workspaceReq.Workspace.Id)
+		loggerFactory := logs.NewLoggerFactory(*p.LogsDir)
+		wsLogWriter := loggerFactory.CreateWorkspaceLogger(workspaceReq.Workspace.Id, logs.LogSourceProvider)
 		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, wsLogWriter)
 		defer wsLogWriter.Close()
 	}
@@ -73,8 +74,8 @@ func (p *DigitalOceanProvider) StartWorkspace(workspaceReq *provider.WorkspaceRe
 func (p *DigitalOceanProvider) StartProject(projectReq *provider.ProjectRequest) (*provider_util.Empty, error) {
 	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	if p.LogsDir != nil {
-		loggerFactory := logger.NewLoggerFactory(*p.LogsDir)
-		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name)
+		loggerFactory := logs.NewLoggerFactory(*p.LogsDir)
+		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name, logs.LogSourceProvider)
 		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
 		defer projectLogWriter.Close()
 	}
@@ -85,11 +86,19 @@ func (p *DigitalOceanProvider) StartProject(projectReq *provider.ProjectRequest)
 		return nil, err
 	}
 
-	err = dockerClient.StartProject(projectReq.Project)
+	sshClient, err := p.getSshClient(projectReq.Project.WorkspaceId)
 	if err != nil {
-		logWriter.Write([]byte("Failed to start project: " + err.Error() + "\n"))
-		return nil, err
+		logWriter.Write([]byte("Failed to get ssh client: " + err.Error() + "\n"))
+		return new(provider_util.Empty), err
 	}
+	defer sshClient.Close()
 
-	return new(provider_util.Empty), nil
+	return new(provider_util.Empty), dockerClient.StartProject(&docker.CreateProjectOptions{
+		Project:    projectReq.Project,
+		ProjectDir: p.getProjectDir(projectReq),
+		Cr:         projectReq.ContainerRegistry,
+		LogWriter:  logWriter,
+		Gpc:        projectReq.GitProviderConfig,
+		SshClient:  sshClient,
+	}, *p.DaytonaDownloadUrl)
 }
