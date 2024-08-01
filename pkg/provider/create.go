@@ -175,10 +175,18 @@ service docker stop
 cat > /etc/docker/daemon.json << EOF
 {
   "data-root": "/home/daytona/.docker-daemon",
-  "hosts": ["tcp://127.0.0.1:2375"],
   "live-restore": true
 }
 EOF
+# https://docs.docker.com/config/daemon/remote-access/#configuring-remote-access-with-systemd-unit-file
+mkdir -p /etc/systemd/system/docker.service.d
+cat > /etc/systemd/system/docker.service.d/options.conf << EOF
+[Service]
+ExecStart=
+ExecStart=/usr/bin/dockerd -H fd:// -H tcp://127.0.0.1:2375
+EOF
+systemctl daemon-reload
+
 # Make sure we only copy if volumes isn't initialized
 if [ ! -d "/home/daytona/.docker-daemon" ]; then
   mkdir -p /home/daytona/.docker-daemon
