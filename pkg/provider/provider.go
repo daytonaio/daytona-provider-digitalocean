@@ -18,6 +18,7 @@ import (
 	provider_util "github.com/daytonaio/daytona/pkg/provider/util"
 	"github.com/daytonaio/daytona/pkg/ssh"
 	"github.com/daytonaio/daytona/pkg/tailscale"
+	"github.com/daytonaio/daytona/pkg/workspace/project"
 	"github.com/docker/docker/client"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
@@ -83,7 +84,7 @@ func (p *DigitalOceanProvider) GetWorkspaceInfo(workspaceReq *provider.Workspace
 		ProviderMetadata: providerMetadata,
 	}
 
-	projectInfos := []*workspace.ProjectInfo{}
+	projectInfos := []*project.ProjectInfo{}
 	for _, project := range workspaceReq.Workspace.Projects {
 		projectInfo, err := p.GetProjectInfo(&provider.ProjectRequest{
 			TargetOptions: workspaceReq.TargetOptions,
@@ -99,7 +100,7 @@ func (p *DigitalOceanProvider) GetWorkspaceInfo(workspaceReq *provider.Workspace
 	return workspaceInfo, nil
 }
 
-func (p *DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectRequest) (*workspace.ProjectInfo, error) {
+func (p *DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectRequest) (*project.ProjectInfo, error) {
 	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	if p.LogsDir != nil {
 		loggerFactory := logs.NewLoggerFactory(*p.LogsDir)
