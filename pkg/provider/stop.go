@@ -11,15 +11,15 @@ import (
 	"github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
 	provider_util "github.com/daytonaio/daytona/pkg/provider/util"
 
-	"github.com/daytonaio/daytona/pkg/logger"
+	"github.com/daytonaio/daytona/pkg/logs"
 	"github.com/daytonaio/daytona/pkg/provider"
 )
 
 func (p *DigitalOceanProvider) StopWorkspace(workspaceReq *provider.WorkspaceRequest) (*provider_util.Empty, error) {
 	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	if p.LogsDir != nil {
-		loggerFactory := logger.NewLoggerFactory(*p.LogsDir)
-		wsLogWriter := loggerFactory.CreateWorkspaceLogger(workspaceReq.Workspace.Id)
+		loggerFactory := logs.NewLoggerFactory(*p.LogsDir)
+		wsLogWriter := loggerFactory.CreateWorkspaceLogger(workspaceReq.Workspace.Id, logs.LogSourceProvider)
 		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, wsLogWriter)
 		defer wsLogWriter.Close()
 	}
@@ -70,8 +70,8 @@ func (p *DigitalOceanProvider) StopWorkspace(workspaceReq *provider.WorkspaceReq
 func (p *DigitalOceanProvider) StopProject(projectReq *provider.ProjectRequest) (*provider_util.Empty, error) {
 	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	if p.LogsDir != nil {
-		loggerFactory := logger.NewLoggerFactory(*p.LogsDir)
-		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name)
+		loggerFactory := logs.NewLoggerFactory(*p.LogsDir)
+		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name, logs.LogSourceProvider)
 		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
 		defer projectLogWriter.Close()
 	}
@@ -82,11 +82,5 @@ func (p *DigitalOceanProvider) StopProject(projectReq *provider.ProjectRequest) 
 		return nil, err
 	}
 
-	err = dockerClient.StopProject(projectReq.Project)
-	if err != nil {
-		logWriter.Write([]byte("Failed to stop project: " + err.Error() + "\n"))
-		return nil, err
-	}
-
-	return new(provider_util.Empty), nil
+	return new(provider_util.Empty), dockerClient.StopProject(projectReq.Project, logWriter)
 }
