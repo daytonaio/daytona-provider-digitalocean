@@ -175,6 +175,7 @@ service docker stop
 cat > /etc/docker/daemon.json << EOF
 {
   "data-root": "/home/daytona/.docker-daemon",
+	"hosts": ["unix:///var/run/docker.sock", "tcp://0.0.0.0:2375"],
   "live-restore": true
 }
 EOF
@@ -183,7 +184,7 @@ mkdir -p /etc/systemd/system/docker.service.d
 cat > /etc/systemd/system/docker.service.d/options.conf << EOF
 [Service]
 ExecStart=
-ExecStart=/usr/bin/dockerd -H fd:// -H tcp://127.0.0.1:2375
+ExecStart=/usr/bin/dockerd
 EOF
 systemctl daemon-reload
 
