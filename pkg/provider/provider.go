@@ -103,7 +103,7 @@ func (p *DigitalOceanProvider) GetWorkspaceInfo(workspaceReq *provider.Workspace
 func (p *DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectRequest) (*project.ProjectInfo, error) {
 	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
 	if p.LogsDir != nil {
-		loggerFactory := logs.NewLoggerFactory(*p.LogsDir)
+		loggerFactory := logs.NewLoggerFactory(p.LogsDir, nil)
 		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name, logs.LogSourceProvider)
 		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
 		defer projectLogWriter.Close()
@@ -227,7 +227,7 @@ func (p *DigitalOceanProvider) getProjectLogWriter(workspaceId string, projectNa
 	cleanupFunc := func() {}
 
 	if p.LogsDir != nil {
-		loggerFactory := logs.NewLoggerFactory(*p.LogsDir)
+		loggerFactory := logs.NewLoggerFactory(p.LogsDir, nil)
 		projectLogWriter := loggerFactory.CreateProjectLogger(workspaceId, projectName, logs.LogSourceProvider)
 		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
 		cleanupFunc = func() { projectLogWriter.Close() }

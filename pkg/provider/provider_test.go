@@ -8,7 +8,6 @@ import (
 	daytona_provider "github.com/daytonaio/daytona/pkg/provider"
 	"github.com/daytonaio/daytona/pkg/workspace"
 	"github.com/daytonaio/daytona/pkg/workspace/project"
-	"github.com/daytonaio/daytona/pkg/workspace/project/config"
 
 	"github.com/daytonaio/daytona-provider-digitalocean/pkg/provider"
 	"github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
@@ -25,22 +24,20 @@ var targetOptions = &types.TargetOptions{
 var optionsString string
 
 var project1 = &project.Project{
-	ProjectConfig: config.ProjectConfig{
-		Name: "test",
-		Repository: &gitprovider.GitRepository{
-			Id:   "123",
-			Url:  "https://github.com/daytonaio/daytona",
-			Name: "daytona",
-		},
-		EnvVars: map[string]string{
-			"DAYTONA_WS_ID":                     "123",
-			"DAYTONA_WS_PROJECT_NAME":           "test",
-			"DAYTONA_WS_PROJECT_REPOSITORY_URL": "https://github.com/daytonaio/daytona",
-			"DAYTONA_SERVER_API_KEY":            "api-key-test",
-			"DAYTONA_SERVER_VERSION":            "latest",
-			"DAYTONA_SERVER_URL":                "http://localhost:3001",
-			"DAYTONA_SERVER_API_URL":            "http://localhost:3000",
-		},
+	Name: "test",
+	Repository: &gitprovider.GitRepository{
+		Id:   "123",
+		Url:  "https://github.com/daytonaio/daytona",
+		Name: "daytona",
+	},
+	EnvVars: map[string]string{
+		"DAYTONA_WS_ID":                     "123",
+		"DAYTONA_WS_PROJECT_NAME":           "test",
+		"DAYTONA_WS_PROJECT_REPOSITORY_URL": "https://github.com/daytonaio/daytona",
+		"DAYTONA_SERVER_API_KEY":            "api-key-test",
+		"DAYTONA_SERVER_VERSION":            "latest",
+		"DAYTONA_SERVER_URL":                "http://localhost:3001",
+		"DAYTONA_SERVER_API_URL":            "http://localhost:3000",
 	},
 	WorkspaceId: "123",
 }
