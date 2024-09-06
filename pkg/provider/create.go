@@ -168,7 +168,10 @@ mount -o discard,defaults,noatime /dev/disk/by-id/scsi-0DO_Volume_` + dropletNam
 
 echo '/dev/disk/by-id/scsi-0DO_Volume_` + dropletName + ` /home/daytona ext4 discard,defaults,noatime 0 0' | sudo tee -a /etc/fstab
 
-curl -fsSL https://get.docker.com | bash
+# Check if docker is installed
+if ! command -v docker &> /dev/null; then
+  curl -fsSL https://get.docker.com | bash
+fi
 
 # Move docker data dir
 service docker stop

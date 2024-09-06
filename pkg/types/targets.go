@@ -30,7 +30,7 @@ func GetTargetManifest() *provider.ProviderTargetManifest {
 		},
 		"Image": provider.ProviderTargetProperty{
 			Type:         provider.ProviderTargetPropertyTypeString,
-			DefaultValue: "ubuntu-22-04-x64",
+			DefaultValue: "docker-20-04",
 		},
 		"Auth Token": provider.ProviderTargetProperty{
 			Type:        provider.ProviderTargetPropertyTypeString,
