@@ -185,7 +185,7 @@ func (p *DigitalOceanProvider) waitForDial(workspaceId string, dialTimeout time.
 	dialStartTime := time.Now()
 	for {
 		if time.Since(dialStartTime) > dialTimeout {
-			return errors.New("timeout: dialing timed out after 3 minutes")
+			return fmt.Errorf("timeout: dialing timed out after %f minutes", dialTimeout.Minutes())
 		}
 
 		dialConn, err := tsnetConn.Dial(context.Background(), "tcp", fmt.Sprintf("%s:%d", workspaceId, config.SSH_PORT))
