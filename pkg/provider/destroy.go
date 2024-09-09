@@ -24,20 +24,18 @@ func (p *DigitalOceanProvider) DestroyWorkspace(workspaceReq *provider.Workspace
 	dockerClient, err := p.getDockerClient(workspaceReq.Workspace.Id)
 	if err != nil {
 		logWriter.Write([]byte("Failed to get docker client: " + err.Error() + "\n"))
-		return new(provider_util.Empty), err
-	}
+	} else {
+		sshClient, err := p.getSshClient(workspaceReq.Workspace.Id)
+		if err != nil {
+			logWriter.Write([]byte("Failed to get ssh client: " + err.Error() + "\n"))
+		} else {
+			defer sshClient.Close()
 
-	sshClient, err := p.getSshClient(workspaceReq.Workspace.Id)
-	if err != nil {
-		logWriter.Write([]byte("Failed to get ssh client: " + err.Error() + "\n"))
-		return new(provider_util.Empty), err
-	}
-	defer sshClient.Close()
-
-	err = dockerClient.DestroyWorkspace(workspaceReq.Workspace, p.getWorkspaceDir(workspaceReq.Workspace.Id), sshClient)
-	if err != nil {
-		logWriter.Write([]byte("Failed to destroy workspace: " + err.Error() + "\n"))
-		return new(provider_util.Empty), err
+			err = dockerClient.DestroyWorkspace(workspaceReq.Workspace, p.getWorkspaceDir(workspaceReq.Workspace.Id), sshClient)
+			if err != nil {
+				logWriter.Write([]byte("Failed to destroy workspace: " + err.Error() + "\n"))
+			}
+		}
 	}
 
 	targetOptions, err := types.ParseTargetOptions(workspaceReq.TargetOptions)
