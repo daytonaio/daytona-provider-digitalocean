@@ -171,6 +171,11 @@ func (p *DigitalOceanProvider) getDockerClient(workspaceId string) (docker.IDock
 		return nil, err
 	}
 
+	err = p.waitForDial(workspaceId, 15*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
 	return docker.NewDockerClient(docker.DockerClientConfig{
 		ApiClient: cli,
 	}), nil
