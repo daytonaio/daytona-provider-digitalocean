@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"fmt"
 	"io"
 	"time"
 
@@ -41,32 +40,11 @@ func (p *DigitalOceanProvider) StartWorkspace(workspaceReq *provider.WorkspaceRe
 		return nil, err
 	}
 
-	logWriter.Write([]byte("Droplet created.\n"))
-	stopSpinnerChan := make(chan bool)
-
-	go func() {
-		spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
-		for i := 0; ; i++ {
-			select {
-			case <-stopSpinnerChan:
-				return
-			case <-time.After(200 * time.Millisecond):
-				if i > 0 {
-					logWriter.Write([]byte("\033[1F"))
-				}
-				logWriter.Write([]byte(fmt.Sprintf("%s Waiting for agent to start...\n", spinner[i%len(spinner)])))
-			}
-		}
-	}()
-
 	err = p.waitForDial(workspaceReq.Workspace.Id, 10*time.Minute)
-	stopSpinnerChan <- true
-
 	if err != nil {
 		logWriter.Write([]byte("Failed to dial: " + err.Error() + "\n"))
 		return nil, err
 	}
-	logWriter.Write([]byte("Workspace agent started.\n"))
 
 	return new(provider_util.Empty), nil
 }
