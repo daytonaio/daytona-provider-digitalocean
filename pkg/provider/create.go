@@ -48,33 +48,6 @@ func (p *DigitalOceanProvider) CreateWorkspace(workspaceReq *provider.WorkspaceR
 		return new(provider_util.Empty), err
 	}
 
-	logWriter.Write([]byte("Droplet created.\n"))
-	stopSpinnerChan := make(chan bool)
-
-	go func() {
-		spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
-		for i := 0; ; i++ {
-			select {
-			case <-stopSpinnerChan:
-				return
-			case <-time.After(200 * time.Millisecond):
-				if i > 0 {
-					logWriter.Write([]byte("\033[1F"))
-				}
-				logWriter.Write([]byte(fmt.Sprintf("%s Waiting for the agent to start...\n", spinner[i%len(spinner)])))
-			}
-		}
-	}()
-
-	err = p.waitForDial(workspaceReq.Workspace.Id, 10*time.Minute)
-	stopSpinnerChan <- true
-
-	if err != nil {
-		logWriter.Write([]byte("Failed to dial: " + err.Error() + "\n"))
-		return new(provider_util.Empty), err
-	}
-	logWriter.Write([]byte("Workspace agent started.\n"))
-
 	dockerClient, err := p.getDockerClient(workspaceReq.Workspace.Id)
 	if err != nil {
 		logWriter.Write([]byte("Failed to get docker client: " + err.Error() + "\n"))
@@ -126,14 +99,9 @@ func (p *DigitalOceanProvider) CreateProject(projectReq *provider.ProjectRequest
 func (p *DigitalOceanProvider) createDroplet(client *godo.Client, ws *workspace.Workspace, targetOptions *types.TargetOptions, logWriter io.Writer) (*godo.Droplet, error) {
 	dropletName := util.GetDropletName(ws)
 
-	droplets, _, err := client.Droplets.List(context.Background(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("error listing droplets: %v", err)
-	}
-	for _, d := range droplets {
-		if d.Name == dropletName {
-			return &d, nil
-		}
+	existingDroplet, err := util.GetDroplet(client, dropletName)
+	if err == nil && existingDroplet != nil {
+		return existingDroplet, nil
 	}
 
 	logWriter.Write([]byte("Creating droplet...\n"))
@@ -267,6 +235,19 @@ systemctl start daytona-agent.service
 
 		time.Sleep(time.Second * 2)
 	}
+
+	logWriter.Write([]byte("Droplet created.\n"))
+
+	initializingDropletSpinner := log_writers.ShowSpinner(logWriter, "Initializing droplet", "Droplet initialized")
+
+	err = p.waitForDial(ws.Id, 10*time.Minute)
+	close(initializingDropletSpinner)
+
+	if err != nil {
+		logWriter.Write([]byte("Failed to dial: " + err.Error() + "\n"))
+		return nil, err
+	}
+	logWriter.Write([]byte("Workspace agent started.\n"))
 
 	return droplet, nil
 }

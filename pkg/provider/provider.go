@@ -224,7 +224,7 @@ func (p *DigitalOceanProvider) getProjectDir(projectReq *provider.ProjectRequest
 }
 
 func (p *DigitalOceanProvider) getWorkspaceDir(workspaceId string) string {
-	return fmt.Sprintf("/tmp/%s", workspaceId)
+	return fmt.Sprintf("/home/daytona/.workspace-data/%s", workspaceId)
 }
 
 func (p *DigitalOceanProvider) getProjectLogWriter(workspaceId string, projectName string) (io.Writer, func()) {
