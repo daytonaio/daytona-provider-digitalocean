@@ -59,8 +59,10 @@ func (p *DigitalOceanProvider) Initialize(req provider.InitializeProviderRequest
 }
 
 func (p *DigitalOceanProvider) GetInfo() (provider.ProviderInfo, error) {
+	label := "DigitalOcean"
 	return provider.ProviderInfo{
 		Name:    "digitalocean-provider",
+		Label:   &label,
 		Version: internal.Version,
 	}, nil
 }
