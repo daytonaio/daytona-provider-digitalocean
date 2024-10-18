@@ -71,7 +71,7 @@ func (p *DigitalOceanProvider) GetTargetManifest() (*provider.ProviderTargetMani
 	return types.GetTargetManifest(), nil
 }
 
-func (p *DigitalOceanProvider) GetDefaultTargets() (*[]provider.ProviderTarget, error) {
+func (p *DigitalOceanProvider) GetPresetTargets() (*[]provider.ProviderTarget, error) {
 	return &[]provider.ProviderTarget{}, nil
 }
 

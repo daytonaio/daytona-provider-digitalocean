@@ -16,7 +16,6 @@
 
 </div>
 
-
 <h1 align="center">Daytona DigitalOcean Provider</h1>
 <div align="center">
 This repository is the home of the <a href="https://github.com/daytonaio/daytona">Daytona</a> DigitalOcean Provider.
@@ -37,17 +36,17 @@ The DigitalOcean Provider allows Daytona to create workspace projects on Digital
 
 ## Target Options
 
-| Property   	| Type   	| Optional 	| DefaultValue     	| InputMasked 	| DisabledPredicate 	|
-|------------	|--------	|----------	|------------------	|-------------	|-------------------	|
-| Auth Token 	| String 	| true     	|                  	| true        	|                   	|
-| Disk Size  	| Int    	| false    	| 20               	| false       	|                   	|
-| Image      	| String 	| false    	| ubuntu-22-04-x64 	| false       	|                   	|
-| Region     	| String 	| false    	| fra1             	| false       	|                   	|
-| Size       	| String 	| false    	| s-2vcpu-4gb      	| false       	|                   	|
+| Property   | Type   | Optional | DefaultValue     | InputMasked | DisabledPredicate |
+| ---------- | ------ | -------- | ---------------- | ----------- | ----------------- |
+| Auth Token | String | true     |                  | true        |                   |
+| Disk Size  | Int    | false    | 20               | false       |                   |
+| Image      | String | false    | ubuntu-22-04-x64 | false       |                   |
+| Region     | String | false    | fra1             | false       |                   |
+| Size       | String | false    | s-2vcpu-4gb      | false       |                   |
 
-### Default Targets
+### Preset Targets
 
-The Digital Ocean Provider has no default targets.
+The Digital Ocean Provider has no preset targets.
 
 ## Code of Conduct
 
