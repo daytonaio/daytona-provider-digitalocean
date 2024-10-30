@@ -225,6 +225,11 @@ func (p *DigitalOceanProvider) getProjectDir(projectReq *provider.ProjectRequest
 	)
 }
 
+func (a *DigitalOceanProvider) CheckRequirements() (*[]provider.RequirementStatus, error) {
+	results := []provider.RequirementStatus{}
+	return &results, nil 
+}
+
 func (p *DigitalOceanProvider) getWorkspaceDir(workspaceId string) string {
 	return fmt.Sprintf("/home/daytona/.workspace-data/%s", workspaceId)
 }
