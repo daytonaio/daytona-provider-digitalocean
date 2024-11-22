@@ -87,12 +87,14 @@ func (p *DigitalOceanProvider) CreateProject(projectReq *provider.ProjectRequest
 	defer sshClient.Close()
 
 	return new(provider_util.Empty), dockerClient.CreateProject(&docker.CreateProjectOptions{
-		Project:    projectReq.Project,
-		ProjectDir: p.getProjectDir(projectReq),
-		Cr:         projectReq.ContainerRegistry,
-		LogWriter:  logWriter,
-		Gpc:        projectReq.GitProviderConfig,
-		SshClient:  sshClient,
+		Project:                  projectReq.Project,
+		ProjectDir:               p.getProjectDir(projectReq),
+		ContainerRegistry:        projectReq.ContainerRegistry,
+		BuilderImage:             projectReq.BuilderImage,
+		BuilderContainerRegistry: projectReq.BuilderContainerRegistry,
+		LogWriter:                logWriter,
+		Gpc:                      projectReq.GitProviderConfig,
+		SshClient:                sshClient,
 	})
 }
 
