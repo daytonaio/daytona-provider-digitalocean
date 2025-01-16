@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/daytonaio/daytona/pkg/workspace"
+	"github.com/daytonaio/daytona/pkg/models"
 	"github.com/digitalocean/godo"
 )
 
-func GetDropletName(workspace *workspace.Workspace) string {
-	return fmt.Sprintf("daytona-%s", workspace.Id)
+func GetDropletName(target *models.Target) string {
+	return fmt.Sprintf("daytona-%s", target.Id)
 }
 
 func GetDroplet(client *godo.Client, dropletName string) (*godo.Droplet, error) {

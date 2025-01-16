@@ -5,19 +5,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/daytonaio/daytona/pkg/workspace"
+	"github.com/daytonaio/daytona/pkg/models"
 	"github.com/digitalocean/godo"
 )
 
-func DeleteDroplet(client *godo.Client, workspace *workspace.Workspace, deleteVolume bool) error {
+func DeleteDroplet(client *godo.Client, target *models.Target, deleteVolume bool) error {
 	if deleteVolume {
-		err := DeleteVolume(client, GetDropletName(workspace))
+		err := DeleteVolume(client, GetDropletName(target))
 		if err != nil {
 			return err
 		}
 	}
 
-	droplet, err := GetDroplet(client, GetDropletName(workspace))
+	droplet, err := GetDroplet(client, GetDropletName(target))
 	if err != nil {
 		return err
 	}
