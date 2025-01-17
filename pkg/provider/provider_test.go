@@ -69,7 +69,7 @@ func TestDestroyTarget(t *testing.T) {
 }
 
 func TestCreateWorkspace(t *testing.T) {
-	TestCreateWorkspace(t)
+	TestCreateTarget(t)
 
 	workspaceReq := &daytona_provider.WorkspaceRequest{
 		Workspace: workspace1,
