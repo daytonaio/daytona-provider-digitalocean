@@ -3,7 +3,7 @@ package types
 import (
 	"encoding/json"
 
-	"github.com/daytonaio/daytona/pkg/provider"
+	"github.com/daytonaio/daytona/pkg/models"
 )
 
 type TargetOptions struct {
@@ -14,26 +14,26 @@ type TargetOptions struct {
 	AuthToken *string `json:"Auth Token,omitempty"` // Auth token
 }
 
-func GetTargetManifest() *provider.ProviderTargetManifest {
-	return &provider.ProviderTargetManifest{
-		"Region": provider.ProviderTargetProperty{
-			Type:         provider.ProviderTargetPropertyTypeString,
+func GetTargetConfigManifest() *models.TargetConfigManifest {
+	return &models.TargetConfigManifest{
+		"Region": models.TargetConfigProperty{
+			Type:         models.TargetConfigPropertyTypeString,
 			DefaultValue: "fra1",
 		},
-		"Size": provider.ProviderTargetProperty{
-			Type:         provider.ProviderTargetPropertyTypeString,
+		"Size": models.TargetConfigProperty{
+			Type:         models.TargetConfigPropertyTypeString,
 			DefaultValue: "s-2vcpu-4gb",
 		},
-		"Disk Size": provider.ProviderTargetProperty{
-			Type:         provider.ProviderTargetPropertyTypeInt,
+		"Disk Size": models.TargetConfigProperty{
+			Type:         models.TargetConfigPropertyTypeInt,
 			DefaultValue: "20",
 		},
-		"Image": provider.ProviderTargetProperty{
-			Type:         provider.ProviderTargetPropertyTypeString,
+		"Image": models.TargetConfigProperty{
+			Type:         models.TargetConfigPropertyTypeString,
 			DefaultValue: "docker-20-04",
 		},
-		"Auth Token": provider.ProviderTargetProperty{
-			Type:        provider.ProviderTargetPropertyTypeString,
+		"Auth Token": models.TargetConfigProperty{
+			Type:        models.TargetConfigPropertyTypeString,
 			InputMasked: true,
 			Description: "If empty, token will be fetched from the DIGITALOCEAN_ACCESS_TOKEN environment variable.",
 		},

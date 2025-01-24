@@ -11,28 +11,23 @@ import (
 	"github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
 	"github.com/daytonaio/daytona/pkg/agent/ssh/config"
 	"github.com/daytonaio/daytona/pkg/docker"
-	"github.com/daytonaio/daytona/pkg/logs"
+	"github.com/daytonaio/daytona/pkg/models"
 	provider_util "github.com/daytonaio/daytona/pkg/provider/util"
 	"github.com/daytonaio/daytona/pkg/ssh"
 	"github.com/daytonaio/daytona/pkg/tailscale"
-	"github.com/daytonaio/daytona/pkg/workspace"
 	"github.com/digitalocean/godo"
 
 	"github.com/daytonaio/daytona/pkg/provider"
 )
 
-func (p *DigitalOceanProvider) CreateWorkspace(workspaceReq *provider.WorkspaceRequest) (*provider_util.Empty, error) {
-	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
-	if p.LogsDir != nil {
-		loggerFactory := logs.NewLoggerFactory(p.LogsDir, nil)
-		wsLogWriter := loggerFactory.CreateWorkspaceLogger(workspaceReq.Workspace.Id, logs.LogSourceProvider)
-		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, wsLogWriter)
-		defer wsLogWriter.Close()
-	}
+func (p *DigitalOceanProvider) CreateTarget(targetReq *provider.TargetRequest) (*provider_util.Empty, error) {
+	logWriter, cleanupFunc := p.getTargetLogWriter(targetReq.Target.Id, targetReq.Target.Name)
+	defer cleanupFunc()
+	logWriter.Write([]byte("\033[?25h\n"))
 
-	targetOptions, err := types.ParseTargetOptions(workspaceReq.TargetOptions)
+	targetOptions, err := types.ParseTargetOptions(targetReq.Target.TargetConfig.Options)
 	if err != nil {
-		logWriter.Write([]byte("Error parsing target options:" + err.Error()))
+		logWriter.Write([]byte("Error parsing target config options:" + err.Error()))
 		return new(provider_util.Empty), err
 	}
 
@@ -42,42 +37,42 @@ func (p *DigitalOceanProvider) CreateWorkspace(workspaceReq *provider.WorkspaceR
 		return new(provider_util.Empty), err
 	}
 
-	_, err = p.createDroplet(client, workspaceReq.Workspace, targetOptions, logWriter)
+	_, err = p.createDroplet(client, targetReq.Target, targetOptions, logWriter)
 	if err != nil {
 		logWriter.Write([]byte("Failed to create droplet: " + err.Error() + "\n"))
 		return new(provider_util.Empty), err
 	}
 
-	dockerClient, err := p.getDockerClient(workspaceReq.Workspace.Id)
+	dockerClient, err := p.getDockerClient(targetReq.Target.Id)
 	if err != nil {
 		logWriter.Write([]byte("Failed to get docker client: " + err.Error() + "\n"))
 		return new(provider_util.Empty), err
 	}
 
-	sshClient, err := p.getSshClient(workspaceReq.Workspace.Id)
+	sshClient, err := p.getSshClient(targetReq.Target.Id)
 	if err != nil {
 		logWriter.Write([]byte("Failed to create ssh client: " + err.Error() + "\n"))
 		return new(provider_util.Empty), err
 	}
 	defer sshClient.Close()
 
-	workspaceDir := p.getWorkspaceDir(workspaceReq.Workspace.Id)
+	targetDir := p.getTargetDir(targetReq.Target.Id)
 
-	return new(provider_util.Empty), dockerClient.CreateWorkspace(workspaceReq.Workspace, workspaceDir, logWriter, sshClient)
+	return new(provider_util.Empty), dockerClient.CreateTarget(targetReq.Target, targetDir, logWriter, sshClient)
 }
 
-func (p *DigitalOceanProvider) CreateProject(projectReq *provider.ProjectRequest) (*provider_util.Empty, error) {
-	logWriter, cleanupFunc := p.getProjectLogWriter(projectReq.Project.WorkspaceId, projectReq.Project.Name)
+func (p *DigitalOceanProvider) CreateWorkspace(workspaceReq *provider.WorkspaceRequest) (*provider_util.Empty, error) {
+	logWriter, cleanupFunc := p.getWorkspaceLogWriter(workspaceReq.Workspace.Id, workspaceReq.Workspace.Name)
 	defer cleanupFunc()
 
-	dockerClient, err := p.getDockerClient(projectReq.Project.WorkspaceId)
+	dockerClient, err := p.getDockerClient(workspaceReq.Workspace.TargetId)
 	if err != nil {
 		logWriter.Write([]byte("Failed to get docker client: " + err.Error() + "\n"))
 		return new(provider_util.Empty), err
 	}
 
 	sshClient, err := tailscale.NewSshClient(p.tsnetConn, &ssh.SessionConfig{
-		Hostname: projectReq.Project.WorkspaceId,
+		Hostname: workspaceReq.Workspace.TargetId,
 		Port:     config.SSH_PORT,
 	})
 	if err != nil {
@@ -86,20 +81,19 @@ func (p *DigitalOceanProvider) CreateProject(projectReq *provider.ProjectRequest
 	}
 	defer sshClient.Close()
 
-	return new(provider_util.Empty), dockerClient.CreateProject(&docker.CreateProjectOptions{
-		Project:                  projectReq.Project,
-		ProjectDir:               p.getProjectDir(projectReq),
-		ContainerRegistry:        projectReq.ContainerRegistry,
-		BuilderImage:             projectReq.BuilderImage,
-		BuilderContainerRegistry: projectReq.BuilderContainerRegistry,
-		LogWriter:                logWriter,
-		Gpc:                      projectReq.GitProviderConfig,
-		SshClient:                sshClient,
+	return new(provider_util.Empty), dockerClient.CreateWorkspace(&docker.CreateWorkspaceOptions{
+		Workspace:           workspaceReq.Workspace,
+		WorkspaceDir:        p.getWorkspaceDir(workspaceReq),
+		ContainerRegistries: workspaceReq.ContainerRegistries,
+		BuilderImage:        workspaceReq.BuilderImage,
+		LogWriter:           logWriter,
+		Gpc:                 workspaceReq.GitProviderConfig,
+		SshClient:           sshClient,
 	})
 }
 
-func (p *DigitalOceanProvider) createDroplet(client *godo.Client, ws *workspace.Workspace, targetOptions *types.TargetOptions, logWriter io.Writer) (*godo.Droplet, error) {
-	dropletName := util.GetDropletName(ws)
+func (p *DigitalOceanProvider) createDroplet(client *godo.Client, tg *models.Target, targetOptions *types.TargetOptions, logWriter io.Writer) (*godo.Droplet, error) {
+	dropletName := util.GetDropletName(tg)
 
 	existingDroplet, err := util.GetDroplet(client, dropletName)
 	if err == nil && existingDroplet != nil {
@@ -108,7 +102,7 @@ func (p *DigitalOceanProvider) createDroplet(client *godo.Client, ws *workspace.
 
 	logWriter.Write([]byte("Creating droplet...\n"))
 
-	ws.EnvVars["DAYTONA_AGENT_LOG_FILE_PATH"] = "/home/daytona/.daytona-agent.log"
+	tg.EnvVars["DAYTONA_AGENT_LOG_FILE_PATH"] = "/home/daytona/.daytona-agent.log"
 
 	volume, err := util.GetVolumeByName(client, dropletName)
 	if err != nil {
@@ -179,11 +173,11 @@ echo "daytona ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/91-daytona
 chown daytona:daytona /home/daytona
 `
 
-	for k, v := range ws.EnvVars {
+	for k, v := range tg.EnvVars {
 		userData += fmt.Sprintf("export %s=%s\n", k, v)
 	}
 
-	userData += fmt.Sprintf(`curl -sfL -H "Authorization: Bearer %s" %s | bash`, ws.ApiKey, *p.DaytonaDownloadUrl)
+	userData += fmt.Sprintf(`curl -sfL -H "Authorization: Bearer %s" %s | bash`, tg.ApiKey, *p.DaytonaDownloadUrl)
 	userData += `
 	echo '[Unit]
 Description=Daytona Agent Service
@@ -191,11 +185,11 @@ After=network.target
 
 [Service]
 User=daytona
-ExecStart=/usr/local/bin/daytona agent --host
+ExecStart=/usr/local/bin/daytona agent --target
 Restart=always
 `
 
-	for k, v := range ws.EnvVars {
+	for k, v := range tg.EnvVars {
 		userData += fmt.Sprintf("Environment='%s=%s'\n", k, v)
 	}
 
@@ -242,7 +236,7 @@ systemctl start daytona-agent.service
 
 	initializingDropletSpinner := log_writers.ShowSpinner(logWriter, "Initializing droplet", "Droplet initialized")
 
-	err = p.waitForDial(ws.Id, 10*time.Minute)
+	err = p.waitForDial(tg.Id, 10*time.Minute)
 	close(initializingDropletSpinner)
 
 	if err != nil {

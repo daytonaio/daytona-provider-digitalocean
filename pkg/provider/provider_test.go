@@ -5,9 +5,8 @@ import (
 	"testing"
 
 	"github.com/daytonaio/daytona/pkg/gitprovider"
+	"github.com/daytonaio/daytona/pkg/models"
 	daytona_provider "github.com/daytonaio/daytona/pkg/provider"
-	"github.com/daytonaio/daytona/pkg/workspace"
-	"github.com/daytonaio/daytona/pkg/workspace/project"
 
 	"github.com/daytonaio/daytona-provider-digitalocean/pkg/provider"
 	"github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
@@ -23,7 +22,8 @@ var targetOptions = &types.TargetOptions{
 }
 var optionsString string
 
-var project1 = &project.Project{
+var workspace1 = &models.Workspace{
+	Id:   "123",
 	Name: "test",
 	Repository: &gitprovider.GitRepository{
 		Id:   "123",
@@ -31,120 +31,89 @@ var project1 = &project.Project{
 		Name: "daytona",
 	},
 	EnvVars: map[string]string{
-		"DAYTONA_WS_ID":                     "123",
-		"DAYTONA_WS_PROJECT_NAME":           "test",
-		"DAYTONA_WS_PROJECT_REPOSITORY_URL": "https://github.com/daytonaio/daytona",
-		"DAYTONA_SERVER_API_KEY":            "api-key-test",
-		"DAYTONA_SERVER_VERSION":            "latest",
-		"DAYTONA_SERVER_URL":                "http://localhost:3001",
-		"DAYTONA_SERVER_API_URL":            "http://localhost:3000",
+		"DAYTONA_TARGET_ID":                "123",
+		"DAYTONA_WORKSPACE_ID":             "test",
+		"DAYTONA_WORKSPACE_REPOSITORY_URL": "https://github.com/daytonaio/daytona",
+		"DAYTONA_SERVER_API_KEY":           "api-key-test",
+		"DAYTONA_SERVER_VERSION":           "latest",
+		"DAYTONA_SERVER_URL":               "http://localhost:3001",
+		"DAYTONA_SERVER_API_URL":           "http://localhost:3000",
 	},
-	WorkspaceId: "123",
 }
 
-var workspace1 = &workspace.Workspace{
-	Id:     "123",
-	Name:   "test",
-	Target: "local",
-	Projects: []*project.Project{
-		project1,
-	},
+var target1 = &models.Target{
+	Id:   "123",
+	Name: "test",
+}
+
+func TestCreateTarget(t *testing.T) {
+	tgReq := &daytona_provider.TargetRequest{
+		Target: target1,
+	}
+
+	_, err := doProvider.CreateTarget(tgReq)
+	if err != nil {
+		t.Errorf("Error creating target: %s", err)
+	}
+}
+
+func TestDestroyTarget(t *testing.T) {
+	tgReq := &daytona_provider.TargetRequest{
+		Target: target1,
+	}
+
+	_, err := doProvider.DestroyTarget(tgReq)
+	if err != nil {
+		t.Errorf("Error deleting target: %s", err)
+	}
 }
 
 func TestCreateWorkspace(t *testing.T) {
-	wsReq := &daytona_provider.WorkspaceRequest{
-		TargetOptions: optionsString,
-		Workspace:     workspace1,
+	TestCreateTarget(t)
+
+	workspaceReq := &daytona_provider.WorkspaceRequest{
+		Workspace: workspace1,
 	}
 
-	_, err := doProvider.CreateWorkspace(wsReq)
+	_, err := doProvider.CreateWorkspace(workspaceReq)
 	if err != nil {
 		t.Errorf("Error creating workspace: %s", err)
 	}
 }
 
-func TestGetWorkspaceInfo(t *testing.T) {
-	wsReq := &daytona_provider.WorkspaceRequest{
-		TargetOptions: optionsString,
-		Workspace:     workspace1,
+func TestStartWorkspace(t *testing.T) {
+	workspaceReq := &daytona_provider.WorkspaceRequest{
+		Workspace: workspace1,
 	}
 
-	workspaceInfo, err := doProvider.GetWorkspaceInfo(wsReq)
-	if err != nil || workspaceInfo == nil {
-		t.Errorf("Error getting workspace info: %s", err)
-	}
-
-	var workspaceMetadata types.WorkspaceMetadata
-	err = json.Unmarshal([]byte(workspaceInfo.ProviderMetadata), &workspaceMetadata)
+	_, err := doProvider.StartWorkspace(workspaceReq)
 	if err != nil {
-		t.Errorf("Error unmarshalling workspace metadata: %s", err)
+		t.Errorf("Error starting workspace: %s", err)
+	}
+}
+
+func TestStopWorkspace(t *testing.T) {
+	workspaceReq := &daytona_provider.WorkspaceRequest{
+		Workspace: workspace1,
+	}
+
+	_, err := doProvider.StopWorkspace(workspaceReq)
+	if err != nil {
+		t.Errorf("Error stopping workspace: %s", err)
 	}
 }
 
 func TestDestroyWorkspace(t *testing.T) {
-	wsReq := &daytona_provider.WorkspaceRequest{
-		TargetOptions: optionsString,
-		Workspace:     workspace1,
+	workspaceReq := &daytona_provider.WorkspaceRequest{
+		Workspace: workspace1,
 	}
 
-	_, err := doProvider.DestroyWorkspace(wsReq)
+	_, err := doProvider.DestroyWorkspace(workspaceReq)
 	if err != nil {
 		t.Errorf("Error deleting workspace: %s", err)
 	}
-}
 
-func TestCreateProject(t *testing.T) {
-	TestCreateWorkspace(t)
-
-	projectReq := &daytona_provider.ProjectRequest{
-		TargetOptions: optionsString,
-		Project:       project1,
-	}
-
-	_, err := doProvider.CreateProject(projectReq)
-	if err != nil {
-		t.Errorf("Error creating project: %s", err)
-	}
-}
-
-func TestStartProject(t *testing.T) {
-	projectReq := &daytona_provider.ProjectRequest{
-		TargetOptions: optionsString,
-		Project:       project1,
-	}
-
-	// Call StartProject
-	_, err := doProvider.StartProject(projectReq)
-	if err != nil {
-		t.Errorf("Error starting a project: %s", err)
-	}
-}
-
-func TestStopProject(t *testing.T) {
-	projectReq := &daytona_provider.ProjectRequest{
-		TargetOptions: optionsString,
-		Project:       project1,
-	}
-
-	// Call StartProject
-	_, err := doProvider.StopProject(projectReq)
-	if err != nil {
-		t.Errorf("Error stopping a project: %s", err)
-	}
-}
-
-func TestDestroyProject(t *testing.T) {
-	projectReq := &daytona_provider.ProjectRequest{
-		TargetOptions: optionsString,
-		Project:       project1,
-	}
-
-	_, err := doProvider.DestroyProject(projectReq)
-	if err != nil {
-		t.Errorf("Error deleting project: %s", err)
-	}
-
-	TestDestroyWorkspace(t)
+	TestDestroyTarget(t)
 }
 
 func init() {
@@ -156,7 +125,8 @@ func init() {
 		ApiUrl:             "",
 		ServerPort:         0,
 		ApiPort:            0,
-		LogsDir:            "/tmp/logs",
+		WorkspaceLogsDir:   "/tmp/logs",
+		TargetLogsDir:      "/tmp/logs",
 	})
 	if err != nil {
 		panic(err)

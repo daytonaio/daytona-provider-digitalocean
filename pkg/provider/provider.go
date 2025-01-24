@@ -11,22 +11,21 @@ import (
 	"time"
 
 	internal "github.com/daytonaio/daytona-provider-digitalocean/internal"
-	log_writers "github.com/daytonaio/daytona-provider-digitalocean/internal/log"
+	logwriters "github.com/daytonaio/daytona-provider-digitalocean/internal/log"
 	"github.com/daytonaio/daytona-provider-digitalocean/pkg/types"
 	"github.com/daytonaio/daytona/pkg/agent/ssh/config"
 	"github.com/daytonaio/daytona/pkg/docker"
+	"github.com/daytonaio/daytona/pkg/logs"
+	"github.com/daytonaio/daytona/pkg/models"
 	provider_util "github.com/daytonaio/daytona/pkg/provider/util"
 	"github.com/daytonaio/daytona/pkg/ssh"
 	"github.com/daytonaio/daytona/pkg/tailscale"
-	"github.com/daytonaio/daytona/pkg/workspace/project"
 	"github.com/docker/docker/client"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	"tailscale.com/tsnet"
 
-	"github.com/daytonaio/daytona/pkg/logs"
 	"github.com/daytonaio/daytona/pkg/provider"
-	"github.com/daytonaio/daytona/pkg/workspace"
 	"github.com/digitalocean/godo"
 )
 
@@ -36,9 +35,11 @@ type DigitalOceanProvider struct {
 	DaytonaVersion     *string
 	ServerUrl          *string
 	ApiUrl             *string
-	LogsDir            *string
+	ApiKey             *string
 	ApiPort            *uint32
 	ServerPort         *uint32
+	WorkspaceLogsDir   *string
+	TargetLogsDir      *string
 	NetworkKey         *string
 
 	tsnetConn *tsnet.Server
@@ -50,78 +51,54 @@ func (p *DigitalOceanProvider) Initialize(req provider.InitializeProviderRequest
 	p.DaytonaVersion = &req.DaytonaVersion
 	p.ServerUrl = &req.ServerUrl
 	p.ApiUrl = &req.ApiUrl
-	p.LogsDir = &req.LogsDir
+	p.ApiKey = req.ApiKey
 	p.ApiPort = &req.ApiPort
 	p.ServerPort = &req.ServerPort
+	p.WorkspaceLogsDir = &req.WorkspaceLogsDir
+	p.TargetLogsDir = &req.TargetLogsDir
 	p.NetworkKey = &req.NetworkKey
 
 	return new(provider_util.Empty), nil
 }
 
-func (p *DigitalOceanProvider) GetInfo() (provider.ProviderInfo, error) {
+func (p *DigitalOceanProvider) GetInfo() (models.ProviderInfo, error) {
 	label := "DigitalOcean"
-	return provider.ProviderInfo{
-		Name:    "digitalocean-provider",
-		Label:   &label,
-		Version: internal.Version,
+	return models.ProviderInfo{
+		Name:                 "digitalocean-provider",
+		Label:                &label,
+		Version:              internal.Version,
+		TargetConfigManifest: *types.GetTargetConfigManifest(),
 	}, nil
 }
 
-func (p *DigitalOceanProvider) GetTargetManifest() (*provider.ProviderTargetManifest, error) {
-	return types.GetTargetManifest(), nil
+func (p *DigitalOceanProvider) GetPresetTargetConfigs() (*[]provider.TargetConfig, error) {
+	return new([]provider.TargetConfig), nil
 }
 
-func (p *DigitalOceanProvider) GetPresetTargets() (*[]provider.ProviderTarget, error) {
-	return &[]provider.ProviderTarget{}, nil
-}
+func (p *DigitalOceanProvider) GetTargetProviderMetadata(targetReq *provider.TargetRequest) (string, error) {
+	logWriter, cleanupFunc := p.getTargetLogWriter(targetReq.Target.Id, targetReq.Target.Name)
+	defer cleanupFunc()
 
-func (p *DigitalOceanProvider) GetWorkspaceInfo(workspaceReq *provider.WorkspaceRequest) (*workspace.WorkspaceInfo, error) {
-	providerMetadata, err := p.getWorkspaceMetadata(workspaceReq)
-	if err != nil {
-		return nil, err
-	}
-
-	workspaceInfo := &workspace.WorkspaceInfo{
-		Name:             workspaceReq.Workspace.Name,
-		ProviderMetadata: providerMetadata,
-	}
-
-	projectInfos := []*project.ProjectInfo{}
-	for _, project := range workspaceReq.Workspace.Projects {
-		projectInfo, err := p.GetProjectInfo(&provider.ProjectRequest{
-			TargetOptions: workspaceReq.TargetOptions,
-			Project:       project,
-		})
-		if err != nil {
-			return nil, err
-		}
-		projectInfos = append(projectInfos, projectInfo)
-	}
-	workspaceInfo.Projects = projectInfos
-
-	return workspaceInfo, nil
-}
-
-func (p *DigitalOceanProvider) GetProjectInfo(projectReq *provider.ProjectRequest) (*project.ProjectInfo, error) {
-	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
-	if p.LogsDir != nil {
-		loggerFactory := logs.NewLoggerFactory(p.LogsDir, nil)
-		projectLogWriter := loggerFactory.CreateProjectLogger(projectReq.Project.WorkspaceId, projectReq.Project.Name, logs.LogSourceProvider)
-		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
-		defer projectLogWriter.Close()
-	}
-
-	dockerClient, err := p.getDockerClient(projectReq.Project.WorkspaceId)
+	dockerClient, err := p.getDockerClient(targetReq.Target.Id)
 	if err != nil {
 		logWriter.Write([]byte("Failed to get docker client: " + err.Error() + "\n"))
-		return nil, err
+		return "", err
 	}
 
-	return dockerClient.GetProjectInfo(projectReq.Project)
+	return dockerClient.GetTargetProviderMetadata(targetReq.Target)
 }
 
-func (p *DigitalOceanProvider) getWorkspaceMetadata(workspaceReq *provider.WorkspaceRequest) (string, error) {
-	return string(""), nil
+func (p *DigitalOceanProvider) GetWorkspaceProviderMetadata(workspaceReq *provider.WorkspaceRequest) (string, error) {
+	logWriter, cleanupFunc := p.getWorkspaceLogWriter(workspaceReq.Workspace.Id, workspaceReq.Workspace.Name)
+	defer cleanupFunc()
+
+	dockerClient, err := p.getDockerClient(workspaceReq.Workspace.TargetId)
+	if err != nil {
+		logWriter.Write([]byte("Failed to get docker client: " + err.Error() + "\n"))
+		return "", err
+	}
+
+	return dockerClient.GetWorkspaceProviderMetadata(workspaceReq.Workspace)
 }
 
 func (p *DigitalOceanProvider) getDoClient(targetOptions *types.TargetOptions) (*godo.Client, error) {
@@ -162,18 +139,18 @@ func (p *DigitalOceanProvider) getTsnetConn() (*tsnet.Server, error) {
 	return p.tsnetConn, nil
 }
 
-func (p *DigitalOceanProvider) getDockerClient(workspaceId string) (docker.IDockerClient, error) {
+func (p *DigitalOceanProvider) getDockerClient(targetId string) (docker.IDockerClient, error) {
 	tsnetConn, err := p.getTsnetConn()
 	if err != nil {
 		return nil, err
 	}
 
-	cli, err := client.NewClientWithOpts(client.WithDialContext(tsnetConn.Dial), client.WithHost(fmt.Sprintf("http://%s:2375", workspaceId)), client.WithAPIVersionNegotiation())
+	cli, err := client.NewClientWithOpts(client.WithDialContext(tsnetConn.Dial), client.WithHost(fmt.Sprintf("http://%s:2375", targetId)), client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
 
-	err = p.waitForDial(workspaceId, 15*time.Second)
+	err = p.waitForDial(targetId, 15*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +160,7 @@ func (p *DigitalOceanProvider) getDockerClient(workspaceId string) (docker.IDock
 	}), nil
 }
 
-func (p *DigitalOceanProvider) waitForDial(workspaceId string, dialTimeout time.Duration) error {
+func (p *DigitalOceanProvider) waitForDial(targetId string, dialTimeout time.Duration) error {
 	tsnetConn, err := p.getTsnetConn()
 	if err != nil {
 		return err
@@ -195,7 +172,7 @@ func (p *DigitalOceanProvider) waitForDial(workspaceId string, dialTimeout time.
 			return fmt.Errorf("timeout: dialing timed out after %f minutes", dialTimeout.Minutes())
 		}
 
-		dialConn, err := tsnetConn.Dial(context.Background(), "tcp", fmt.Sprintf("%s:%d", workspaceId, config.SSH_PORT))
+		dialConn, err := tsnetConn.Dial(context.Background(), "tcp", fmt.Sprintf("%s:%d", targetId, config.SSH_PORT))
 		if err == nil {
 			defer dialConn.Close()
 			break
@@ -218,31 +195,60 @@ func (p *DigitalOceanProvider) getSshClient(workspaceId string) (*ssh.Client, er
 	})
 }
 
-func (p *DigitalOceanProvider) getProjectDir(projectReq *provider.ProjectRequest) string {
+func (p *DigitalOceanProvider) getWorkspaceDir(workspaceReq *provider.WorkspaceRequest) string {
 	return path.Join(
-		p.getWorkspaceDir(projectReq.Project.WorkspaceId),
-		fmt.Sprintf("%s-%s", projectReq.Project.WorkspaceId, projectReq.Project.Name),
+		p.getTargetDir(workspaceReq.Workspace.TargetId),
+		workspaceReq.Workspace.Id,
+		workspaceReq.Workspace.WorkspaceFolderName(),
 	)
 }
 
 func (a *DigitalOceanProvider) CheckRequirements() (*[]provider.RequirementStatus, error) {
 	results := []provider.RequirementStatus{}
-	return &results, nil 
+	return &results, nil
 }
 
-func (p *DigitalOceanProvider) getWorkspaceDir(workspaceId string) string {
-	return fmt.Sprintf("/home/daytona/.workspace-data/%s", workspaceId)
+func (p *DigitalOceanProvider) getTargetDir(targetId string) string {
+	return fmt.Sprintf("/home/daytona/.workspace-data/%s", targetId)
 }
 
-func (p *DigitalOceanProvider) getProjectLogWriter(workspaceId string, projectName string) (io.Writer, func()) {
-	logWriter := io.MultiWriter(&log_writers.InfoLogWriter{})
+func (p *DigitalOceanProvider) getWorkspaceLogWriter(workspaceId, workspaceName string) (io.Writer, func()) {
+	logWriter := io.MultiWriter(&logwriters.InfoLogWriter{})
 	cleanupFunc := func() {}
 
-	if p.LogsDir != nil {
-		loggerFactory := logs.NewLoggerFactory(p.LogsDir, nil)
-		projectLogWriter := loggerFactory.CreateProjectLogger(workspaceId, projectName, logs.LogSourceProvider)
-		logWriter = io.MultiWriter(&log_writers.InfoLogWriter{}, projectLogWriter)
-		cleanupFunc = func() { projectLogWriter.Close() }
+	if p.WorkspaceLogsDir != nil {
+		loggerFactory := logs.NewLoggerFactory(logs.LoggerFactoryConfig{
+			LogsDir:     *p.WorkspaceLogsDir,
+			ApiUrl:      p.ApiUrl,
+			ApiKey:      p.ApiKey,
+			ApiBasePath: &logs.ApiBasePathWorkspace,
+		})
+		workspaceLogWriter, err := loggerFactory.CreateLogger(workspaceId, workspaceName, logs.LogSourceProvider)
+		if err == nil {
+			logWriter = io.MultiWriter(&logwriters.InfoLogWriter{}, workspaceLogWriter)
+			cleanupFunc = func() { workspaceLogWriter.Close() }
+		}
+	}
+
+	return logWriter, cleanupFunc
+}
+
+func (p *DigitalOceanProvider) getTargetLogWriter(targetId, targetName string) (io.Writer, func()) {
+	logWriter := io.MultiWriter(&logwriters.InfoLogWriter{})
+	cleanupFunc := func() {}
+
+	if p.TargetLogsDir != nil {
+		loggerFactory := logs.NewLoggerFactory(logs.LoggerFactoryConfig{
+			LogsDir:     *p.TargetLogsDir,
+			ApiUrl:      p.ApiUrl,
+			ApiKey:      p.ApiKey,
+			ApiBasePath: &logs.ApiBasePathTarget,
+		})
+		workspaceLogWriter, err := loggerFactory.CreateLogger(targetId, targetName, logs.LogSourceProvider)
+		if err == nil {
+			logWriter = io.MultiWriter(&logwriters.InfoLogWriter{}, workspaceLogWriter)
+			cleanupFunc = func() { workspaceLogWriter.Close() }
+		}
 	}
 
 	return logWriter, cleanupFunc
